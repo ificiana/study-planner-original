@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { AppState, IntakeTaskGroupDraft, Priority, TaskGroupDraft } from '../types'
 import { dateRange, shiftDate, todayISO } from './date'
+import { translate, tr, type Language } from './i18n'
 
 export type IntakeImportField =
   | 'title' | 'subject' | 'quantity' | 'unitMinutes' | 'priority' | 'dailyMax' | 'notes'
@@ -35,27 +36,50 @@ export interface IntakeImportResult {
   reviewRows?: IntakeImportReviewRow[]
 }
 
-export const intakeImportFields: Array<{ value: IntakeImportField | 'ignore'; label: string }> = [
-  { value: 'ignore', label: '忽略此列' }, { value: 'title', label: '任务组名称' }, { value: 'subject', label: '科目 / 分类' },
-  { value: 'quantity', label: '数量' }, { value: 'unitMinutes', label: '单项分钟' }, { value: 'priority', label: '优先级' },
-  { value: 'dailyMax', label: '每日上限' }, { value: 'goalTitle', label: '目标名称' }, { value: 'desiredDate', label: '期望完成日' },
-  { value: 'latestDate', label: '最晚完成日' }, { value: 'preferredDate', label: '偏好排期日' }, { value: 'fixedDate', label: '固定排期日' },
-  { value: 'recurring', label: '是否重复' }, { value: 'recurrenceStart', label: '重复开始' }, { value: 'recurrenceEnd', label: '重复结束' },
-  { value: 'recurrenceWeekdays', label: '重复星期' }, { value: 'allowSplit', label: '允许拆分' }, { value: 'splitSessionMinutes', label: '每段分钟' },
-  { value: 'prerequisiteGroupTitles', label: '前置任务组' }, { value: 'countInStats', label: '计入统计' }, { value: 'highIntensity', label: '高强度' },
-  { value: 'notes', label: '备注' },
+const intakeImportFieldKeys: Array<{ value: IntakeImportField | 'ignore'; key: string }> = [
+  { value: 'ignore', key: 'intake.field.ignore' },
+  { value: 'title', key: 'intake.field.title' },
+  { value: 'subject', key: 'intake.field.subject' },
+  { value: 'quantity', key: 'intake.field.quantity' },
+  { value: 'unitMinutes', key: 'intake.field.unitMinutes' },
+  { value: 'priority', key: 'intake.field.priority' },
+  { value: 'dailyMax', key: 'intake.field.dailyMax' },
+  { value: 'goalTitle', key: 'intake.field.goalTitle' },
+  { value: 'desiredDate', key: 'intake.field.desiredDate' },
+  { value: 'latestDate', key: 'intake.field.latestDate' },
+  { value: 'preferredDate', key: 'intake.field.preferredDate' },
+  { value: 'fixedDate', key: 'intake.field.fixedDate' },
+  { value: 'recurring', key: 'intake.field.recurring' },
+  { value: 'recurrenceStart', key: 'intake.field.recurrenceStart' },
+  { value: 'recurrenceEnd', key: 'intake.field.recurrenceEnd' },
+  { value: 'recurrenceWeekdays', key: 'intake.field.recurrenceWeekdays' },
+  { value: 'allowSplit', key: 'intake.field.allowSplit' },
+  { value: 'splitSessionMinutes', key: 'intake.field.splitSessionMinutes' },
+  { value: 'prerequisiteGroupTitles', key: 'intake.field.prerequisiteGroupTitles' },
+  { value: 'countInStats', key: 'intake.field.countInStats' },
+  { value: 'highIntensity', key: 'intake.field.highIntensity' },
+  { value: 'notes', key: 'intake.field.notes' },
 ]
 
+export function getIntakeImportFields(): Array<{ value: IntakeImportField | 'ignore'; label: string }> {
+  return intakeImportFieldKeys.map(({ value, key }) => ({ value, label: tr(key) }))
+}
+
 const priorityValues = new Set([0, 1, 2, 3, 5])
-const fieldLabels: Partial<Record<IntakeImportField, string>> = Object.fromEntries(intakeImportFields.filter(item => item.value !== 'ignore').map(item => [item.value, item.label]))
+function fieldLabel(field: IntakeImportField): string {
+  const key = `intake.field.${field}`
+  const label = tr(key)
+  return label === key ? String(field) : label
+}
 const numberPattern = /-?\d+(?:\.\d+)?/
 
-const normalizedRowSchema = z.object({
-  title: z.string().trim().min(1, '任务组名称不能为空'),
+function buildNormalizedRowSchema(language: Language) {
+  return z.object({
+  title: z.string().trim().min(1, translate(language, 'intake.error.titleRequired')),
   subject: z.string().trim().min(1).default('其他'),
   quantity: z.number().int().min(1).max(10000),
   unitMinutes: z.number().int().min(1).max(1440),
-  priority: z.number().refine(value => priorityValues.has(value), '优先级只能是 0、1、2、3 或 5'),
+  priority: z.number().refine(value => priorityValues.has(value), translate(language, 'intake.error.priorityInvalid')),
   dailyMax: z.number().int().min(1).max(10000).optional(),
   notes: z.string().optional(), goalTitle: z.string().optional(),
   desiredDate: z.string().optional(), latestDate: z.string().optional(), preferredDate: z.string().optional(), fixedDate: z.string().optional(),
@@ -63,7 +87,8 @@ const normalizedRowSchema = z.object({
   recurrenceWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
   allowSplit: z.boolean().default(false), splitSessionMinutes: z.number().int().min(5).max(1440).optional(),
   prerequisiteGroupTitles: z.array(z.string()).optional(), countInStats: z.boolean().default(true), highIntensity: z.boolean().default(false),
-})
+  })
+}
 
 const headerAliases: Record<IntakeImportField, string[]> = {
   title: ['任务组', '任务组名称', '名称', '标题', '任务', 'title', 'name'], subject: ['科目', '分类', 'subject', 'category'],
@@ -147,25 +172,25 @@ function emptyImportedDraft(mapped: Record<string, unknown>): TaskGroupDraft {
   }
 }
 
-export function validateImportedDraft(draft: TaskGroupDraft, row: number): IntakeImportIssue[] {
-  const candidate = normalizedRowSchema.safeParse(draft)
-  const issues: IntakeImportIssue[] = candidate.success ? [] : candidate.error.issues.map(issue => ({ row, field: fieldLabels[issue.path[0] as IntakeImportField] ?? String(issue.path[0] ?? ''), message: issue.message }))
-  if (draft.desiredDate && draft.latestDate && draft.desiredDate > draft.latestDate) issues.push({ row, field: '目标日期', message: '期望完成日不能晚于最晚完成日。' })
-  if (draft.preferredDate && draft.fixedDate) issues.push({ row, field: '排期日期', message: '偏好排期日和固定排期日只能填写一个。' })
-  if (draft.recurring && (!draft.recurrenceStart || !draft.recurrenceEnd)) issues.push({ row, field: '重复日期', message: '重复任务需要开始日期和结束日期。' })
-  if (draft.recurring && draft.recurrenceStart && draft.recurrenceEnd && draft.recurrenceStart > draft.recurrenceEnd) issues.push({ row, field: '重复日期', message: '重复开始不能晚于重复结束。' })
-  if (draft.allowSplit && draft.splitSessionMinutes && draft.splitSessionMinutes >= draft.unitMinutes) issues.push({ row, field: '每段分钟', message: '每段分钟必须小于单项分钟。' })
+export function validateImportedDraft(draft: TaskGroupDraft, row: number, language: Language = 'zh'): IntakeImportIssue[] {
+  const candidate = buildNormalizedRowSchema(language).safeParse(draft)
+  const issues: IntakeImportIssue[] = candidate.success ? [] : candidate.error.issues.map(issue => ({ row, field: (issue.path[0] === undefined ? '' : fieldLabel(issue.path[0] as IntakeImportField)), message: issue.message }))
+  if (draft.desiredDate && draft.latestDate && draft.desiredDate > draft.latestDate) issues.push({ row, field: translate(language, 'intake.field.goalDate'), message: translate(language, 'intake.error.desiredAfterLatest') })
+  if (draft.preferredDate && draft.fixedDate) issues.push({ row, field: translate(language, 'intake.field.scheduleDate'), message: translate(language, 'intake.error.preferredAndFixed') })
+  if (draft.recurring && (!draft.recurrenceStart || !draft.recurrenceEnd)) issues.push({ row, field: translate(language, 'intake.field.recurrenceDate'), message: translate(language, 'intake.error.recurrenceNeedsRange') })
+  if (draft.recurring && draft.recurrenceStart && draft.recurrenceEnd && draft.recurrenceStart > draft.recurrenceEnd) issues.push({ row, field: translate(language, 'intake.field.recurrenceDate'), message: translate(language, 'intake.error.recurrenceStartAfterEnd') })
+  if (draft.allowSplit && draft.splitSessionMinutes && draft.splitSessionMinutes >= draft.unitMinutes) issues.push({ row, field: translate(language, 'intake.field.splitSessionMinutes'), message: translate(language, 'intake.error.splitSessionTooLong') })
   return issues
 }
 
-function parseMappedRow(mapped: Record<string, unknown>, row: number): IntakeImportReviewRow {
+function parseMappedRow(mapped: Record<string, unknown>, row: number, language: Language = 'zh'): IntakeImportReviewRow {
   const draft = emptyImportedDraft(mapped)
-  const issues = validateImportedDraft(draft, row)
+  const issues = validateImportedDraft(draft, row, language)
   const dateFields: Array<[IntakeImportField, string]> = [['desiredDate', '期望完成日'], ['latestDate', '最晚完成日'], ['preferredDate', '偏好排期日'], ['fixedDate', '固定排期日'], ['recurrenceStart', '重复开始'], ['recurrenceEnd', '重复结束']]
-  for (const [field, label] of dateFields) if (mapped[field] && !dateValue(mapped[field])) issues.push({ row, field: label, message: '请使用 YYYY-MM-DD、M月D日或“今天/明天”。' })
+  for (const [field, label] of dateFields) if (mapped[field] && !dateValue(mapped[field])) issues.push({ row, field: label, message: translate(language, 'intake.error.badDateFormat') })
   for (const field of ['quantity', 'unitMinutes', 'priority', 'dailyMax', 'splitSessionMinutes'] as IntakeImportField[]) {
     const raw = mapped[field]
-    if (raw !== undefined && raw !== '' && typeof raw !== 'number' && !numberPattern.test(String(raw))) issues.push({ row, field: fieldLabels[field], message: '请输入数字。' })
+    if (raw !== undefined && raw !== '' && typeof raw !== 'number' && !numberPattern.test(String(raw))) issues.push({ row, field: fieldLabel(field), message: translate(language, 'intake.error.mustBeNumber') })
   }
   return { sourceRow: row, draft, issues }
 }
@@ -175,30 +200,30 @@ export function rebuildImportResult(result: IntakeImportResult, reviewRows: Inta
   return { ...result, reviewRows, drafts: reviewRows.filter(item => !item.issues.length).map(item => item.draft), issues, skippedRows: reviewRows.filter(item => item.issues.length).length }
 }
 
-export function remapIntakeTable(table: IntakeImportTable, mapping: Array<IntakeImportField | 'ignore'>): IntakeImportResult {
+export function remapIntakeTable(table: IntakeImportTable, mapping: Array<IntakeImportField | 'ignore'>, language: Language = 'zh'): IntakeImportResult {
   const mappedTable = { ...table, mapping }
   const reviewRows = table.rows.map((row, index) => {
     const mapped: Record<string, unknown> = {}
     mapping.forEach((field, column) => { if (field !== 'ignore') mapped[field] = row[column] })
-    return parseMappedRow(mapped, index + (table.hasHeader ? 2 : 1))
+    return parseMappedRow(mapped, index + (table.hasHeader ? 2 : 1), language)
   })
   return rebuildImportResult({ drafts: [], issues: [], skippedRows: 0, table: mappedTable, reviewRows }, reviewRows)
 }
 
-export function parseTableRows(rows: unknown[][]): IntakeImportResult {
+export function parseTableRows(rows: unknown[][], language: Language = 'zh'): IntakeImportResult {
   const nonEmpty = rows.filter(row => row.some(cell => String(cell ?? '').trim()))
-  if (!nonEmpty.length) return { drafts: [], issues: [{ row: 1, message: '没有识别到可导入内容。' }], skippedRows: 0 }
+  if (!nonEmpty.length) return { drafts: [], issues: [{ row: 1, message: translate(language, 'intake.error.noImportableContent') }], skippedRows: 0 }
   const autoMapping = nonEmpty[0].map(headerKey)
   const hasHeader = autoMapping.includes('title')
   const dataRows = hasHeader ? nonEmpty.slice(1) : nonEmpty
   const defaultFields: IntakeImportField[] = ['title', 'subject', 'quantity', 'unitMinutes', 'priority', 'dailyMax', 'notes']
   const table: IntakeImportTable = {
-    headers: hasHeader ? nonEmpty[0].map(cell => String(cell ?? '').trim() || '未命名列') : nonEmpty[0].map((_, index) => `第 ${index + 1} 列`),
+    headers: hasHeader ? nonEmpty[0].map(cell => String(cell ?? '').trim() || translate(language, 'intake.unnamedColumn')) : nonEmpty[0].map((_, index) => translate(language, 'intake.columnN', { n: index + 1 })),
     rows: dataRows,
     mapping: hasHeader ? autoMapping.map(item => item ?? 'ignore') : nonEmpty[0].map((_, index) => defaultFields[index] ?? 'ignore'),
     hasHeader,
   }
-  return remapIntakeTable(table, table.mapping)
+  return remapIntakeTable(table, table.mapping, language)
 }
 
 export function parseCsvText(text: string): unknown[][] {
@@ -234,18 +259,18 @@ function freeformDraft(line: string): TaskGroupDraft | undefined {
   return { title, subject, priority: 3, unitMinutes: minutes, activityType: recurring ? 'recurring' : 'normal', highIntensity: false, countInStats: !recurring, quantity, goalIds: [], recurring, desiredDate, latestDate: latestDate ?? desiredDate, preferredDate, fixedDate, allowSplit: false, prerequisiteGroupIds: [] }
 }
 
-export function parsePastedText(text: string): IntakeImportResult {
-  const rows = parseCsvText(text); if (rows.some(row => row.length > 1)) return parseTableRows(rows)
-  const reviewRows = text.split(/\r?\n/).flatMap((line, index) => { const draft = freeformDraft(line); return draft ? [{ sourceRow: index + 1, draft, issues: validateImportedDraft(draft, index + 1) }] : [] })
-  if (!reviewRows.length) return { drafts: [], issues: [{ row: 1, message: '没有识别到任务。可以每行写一个任务，或粘贴带表头的表格。' }], skippedRows: text.split(/\r?\n/).filter(Boolean).length }
+export function parsePastedText(text: string, language: Language = 'zh'): IntakeImportResult {
+  const rows = parseCsvText(text); if (rows.some(row => row.length > 1)) return parseTableRows(rows, language)
+  const reviewRows = text.split(/\r?\n/).flatMap((line, index) => { const draft = freeformDraft(line); return draft ? [{ sourceRow: index + 1, draft, issues: validateImportedDraft(draft, index + 1, language) }] : [] })
+  if (!reviewRows.length) return { drafts: [], issues: [{ row: 1, message: translate(language, 'intake.error.noTasksRecognized') }], skippedRows: text.split(/\r?\n/).filter(Boolean).length }
   return rebuildImportResult({ drafts: [], issues: [], skippedRows: 0, reviewRows }, reviewRows)
 }
 
-export async function readIntakeFile(file: File): Promise<IntakeImportResult> {
+export async function readIntakeFile(file: File, language: Language = 'zh'): Promise<IntakeImportResult> {
   const lower = file.name.toLowerCase()
-  if (lower.endsWith('.csv') || lower.endsWith('.tsv') || lower.endsWith('.txt')) return parseTableRows(parseCsvText(await file.text()))
-  if (lower.endsWith('.xlsx')) { const module = await import('read-excel-file/browser'); return parseTableRows(await module.readSheet(file) as unknown[][]) }
-  return { drafts: [], issues: [{ row: 1, message: '仅支持 TXT、CSV、TSV 或 XLSX 任务清单。' }], skippedRows: 0 }
+  if (lower.endsWith('.csv') || lower.endsWith('.tsv') || lower.endsWith('.txt')) return parseTableRows(parseCsvText(await file.text()), language)
+  if (lower.endsWith('.xlsx')) { const module = await import('read-excel-file/browser'); return parseTableRows(await module.readSheet(file) as unknown[][], language) }
+  return { drafts: [], issues: [{ row: 1, message: translate(language, 'intake.error.unsupportedFileType') }], skippedRows: 0 }
 }
 
 export function buildIntakeCsvTemplate() {
@@ -258,10 +283,10 @@ export function buildIntakeCsvTemplate() {
   return `\uFEFF${rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n')}`
 }
 
-export function intakeDraftIssues(draft: TaskGroupDraft, state: AppState): string[] {
-  const issues = validateImportedDraft(draft, 0).map(item => item.message)
-  if (draft.goalIds.some(id => !state.goals.some(goal => goal.id === id))) issues.push('关联目标已不存在')
-  if ((draft.prerequisiteGroupIds ?? []).some(id => !state.taskGroups.some(group => group.id === id))) issues.push('前置任务组已不存在')
+export function intakeDraftIssues(draft: TaskGroupDraft, state: AppState, language: Language = 'zh'): string[] {
+  const issues = validateImportedDraft(draft, 0, language).map(item => item.message)
+  if (draft.goalIds.some(id => !state.goals.some(goal => goal.id === id))) issues.push(translate(language, 'intake.error.linkedGoalMissing'))
+  if ((draft.prerequisiteGroupIds ?? []).some(id => !state.taskGroups.some(group => group.id === id))) issues.push(translate(language, 'intake.error.prerequisiteGroupMissing'))
   return Array.from(new Set(issues))
 }
 

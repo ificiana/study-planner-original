@@ -1,3 +1,4 @@
+import { storedLanguage } from './i18n'
 import { addDays, format } from 'date-fns'
 import type {
   AppSettings, AppState, Assignment, CalendarConstraint, Goal, GoalCondition, IntakeBatch, IntakeTaskGroupDraft,
@@ -38,6 +39,7 @@ export function defaultSettings(input: Partial<AppSettings> = {}): AppSettings {
     optionalReview: true,
     sidebarCollapsed: false,
     theme: 'system',
+    language: storedLanguage() ?? 'zh',
     notificationsEnabled: false,
     planningMode: 'balanced',
     freezeDays: 2,

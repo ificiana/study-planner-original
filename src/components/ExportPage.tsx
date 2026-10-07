@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3, CalendarDays, CheckCircle2, Clock3, Database, Download, FileImage, FileSpreadsheet, FileText, Printer, ShieldCheck } from 'lucide-react'
 import { useApp } from '../AppContext'
+import { useT } from '../lib/i18n'
 import { clampDate, minutesText, shiftDate, todayISO } from '../lib/date'
 import {
   buildCalendarCsv,
@@ -27,20 +28,23 @@ import {
 type ExportPageId = 'settings' | 'stats'
 type RangePreset = 'recent' | '30d' | '90d' | 'future' | 'all'
 
-const reportSectionOptions: Array<{ key: keyof StatisticsReportSections; title: string; description: string }> = [
-  { key: 'overview', title: '范围概览', description: '实际、原计划、完成率和有效专注' },
-  { key: 'daily', title: '每日学习趋势', description: '每天计划与实际时间变化' },
-  { key: 'completion', title: '完成率趋势', description: '任务数与工作量两个口径' },
-  { key: 'focus', title: '专注与时间来源', description: '计时器、手动补录和旧数据' },
-  { key: 'subjects', title: '科目与任务组', description: '投入、任务数和完成情况' },
-  { key: 'accuracy', title: '预计时长准确度', description: '样本准确度和校准建议' },
-  { key: 'insights', title: '数据洞察', description: '范围内值得注意的变化' },
-  { key: 'heatmap', title: '学习热力图', description: '按天查看学习时间密度' },
-  { key: 'goals', title: '目标与计划版本', description: '目标进度和历史计划变化' },
-  { key: 'quality', title: '执行状态与计划质量', description: '按期、延期、顺延和变更率' },
-  { key: 'details', title: '每天任务清单', description: '按日期列出已完成与未完成任务' },
-  { key: 'ledger', title: '时间流水明细', description: '逐条核对实际发生的时间记录' },
-]
+function useReportSectionOptions(): Array<{ key: keyof StatisticsReportSections; title: string; description: string }> {
+  const t = useT()
+  return [
+    { key: 'overview', title: t('exportPage.section.overview.title'), description: t('exportPage.section.overview.desc') },
+    { key: 'daily', title: t('exportPage.section.daily.title'), description: t('exportPage.section.daily.desc') },
+    { key: 'completion', title: t('exportPage.section.completion.title'), description: t('exportPage.section.completion.desc') },
+    { key: 'focus', title: t('exportPage.section.focus.title'), description: t('exportPage.section.focus.desc') },
+    { key: 'subjects', title: t('exportPage.section.subjects.title'), description: t('exportPage.section.subjects.desc') },
+    { key: 'accuracy', title: t('exportPage.section.accuracy.title'), description: t('exportPage.section.accuracy.desc') },
+    { key: 'insights', title: t('exportPage.section.insights.title'), description: t('exportPage.section.insights.desc') },
+    { key: 'heatmap', title: t('exportPage.section.heatmap.title'), description: t('exportPage.section.heatmap.desc') },
+    { key: 'goals', title: t('exportPage.section.goals.title'), description: t('exportPage.section.goals.desc') },
+    { key: 'quality', title: t('exportPage.section.quality.title'), description: t('exportPage.section.quality.desc') },
+    { key: 'details', title: t('exportPage.section.details.title'), description: t('exportPage.section.details.desc') },
+    { key: 'ledger', title: t('exportPage.section.ledger.title'), description: t('exportPage.section.ledger.desc') },
+  ]
+}
 
 const coreReportSections: StatisticsReportSections = {
   ...defaultStatisticsReportSections,
@@ -54,6 +58,8 @@ const coreReportSections: StatisticsReportSections = {
 }
 
 export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) => void }) {
+  const t = useT()
+  const reportSectionOptions = useReportSectionOptions()
   const { state } = useApp()
   const today = todayISO()
   const initialEnd = clampDate(today, state.settings.startDate, state.settings.endDate)
@@ -92,7 +98,7 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
 
   const runExport = (label: string, filename: string, content: string, mime: string) => {
     downloadTextFile(filename, content, mime)
-    setNotice(`${label}已开始下载。文件只保存在你的设备上。`)
+    setNotice(t('exportPage.downloadStarted', { label }))
   }
 
   const setPreset = (preset: RangePreset) => {
@@ -114,7 +120,7 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
   const openPrintWindow = (html: string, label: string) => {
     const reportWindow = window.open('', '_blank')
     if (!reportWindow) {
-      setNotice('浏览器阻止了打印窗口。请允许本站打开新窗口后重试。')
+      setNotice(t('exportPage.printWindowBlocked'))
       return
     }
     reportWindow.opener = null
@@ -123,23 +129,23 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
     reportWindow.document.close()
     reportWindow.focus()
     window.setTimeout(() => reportWindow.print(), 250)
-    setNotice(`${label}已打开。请在打印窗口选择“另存为 PDF”。`)
+    setNotice(t('exportPage.printWindowOpened', { label }))
   }
 
   const openStatisticsReport = () => {
     if (!valid) return
-    openPrintWindow(buildStatisticsReportHtml(state, range, reportSections), '学习统计报告')
+    openPrintWindow(buildStatisticsReportHtml(state, range, reportSections), t('exportPage.statisticsReportLabel'))
   }
 
   const openCalendarReport = () => {
-    openPrintWindow(buildCalendarPrintHtml(state, calendarMonth), '月历 PDF')
+    openPrintWindow(buildCalendarPrintHtml(state, calendarMonth), t('exportPage.calendarPdfLabel'))
   }
 
   const downloadCalendarImage = () => {
-    setNotice('正在生成月历 PNG……')
+    setNotice(t('exportPage.generatingCalendarPng'))
     void downloadSvgAsPng(`${calendarFilenameBase}.png`, buildCalendarSvg(state, calendarMonth))
-      .then(() => setNotice('月历 PNG 已开始下载。文件只保存在你的设备上。'))
-      .catch(error => setNotice(error instanceof Error ? error.message : '月历图片生成失败，请稍后重试。'))
+      .then(() => setNotice(t('exportPage.calendarPngStarted')))
+      .catch(error => setNotice(error instanceof Error ? error.message : t('exportPage.calendarImageFailed')))
   }
 
   const toggleTaskImageColumn = (column: TaskTableImageColumn) => {
@@ -152,43 +158,43 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
 
   const downloadTaskTableImage = () => {
     if (!valid) return
-    setNotice('正在生成任务清单长图……')
+    setNotice(t('exportPage.generatingTaskImage'))
     void downloadSvgAsPng(`${filenameBase}-tasks.png`, buildTaskTableSvg(state, range, taskImageColumns))
-      .then(() => setNotice('任务清单长图已开始下载。文件包含所选范围内的全部已排任务。'))
-      .catch(error => setNotice(error instanceof Error ? error.message : '任务清单长图生成失败，请缩短日期范围后重试。'))
+      .then(() => setNotice(t('exportPage.taskImageStarted')))
+      .catch(error => setNotice(error instanceof Error ? error.message : t('exportPage.taskImageFailed')))
   }
 
   return <div className="export-page">
     <section className="export-hero">
       <div>
-        <span className="export-kicker"><Download size={16}/>导出中心</span>
-        <h2>导出学习数据</h2>
-        <p>选择日期范围，生成统计报告、每天任务清单、月历或时间记录。所有文件都在本机生成，不会上传你的任务内容。</p>
-        <div className="export-hero-links"><button type="button" className="text-button" onClick={() => onNavigate('stats')}><BarChart3 size={15}/>先查看统计页</button></div>
+        <span className="export-kicker"><Download size={16}/>{t('exportPage.exportCenter')}</span>
+        <h2>{t('exportPage.exportStudyData')}</h2>
+        <p>{t('exportPage.heroDescription')}</p>
+        <div className="export-hero-links"><button type="button" className="text-button" onClick={() => onNavigate('stats')}><BarChart3 size={15}/>{t('exportPage.viewStatsFirst')}</button></div>
       </div>
       <div className="export-hero-mark" aria-hidden="true"><FileSpreadsheet size={44}/></div>
     </section>
 
     <section className="export-range-panel">
-      <div className="export-range-copy"><h3>导出日期范围</h3><p>这个范围用于学习报告、任务清单长图、统计 CSV 和时间流水；月历导出单独选择月份。</p></div>
-      <div className="export-presets" aria-label="日期范围快捷选项">
-        <button type="button" onClick={() => setPreset('recent')}>近 7 天</button>
-        <button type="button" onClick={() => setPreset('30d')}>近 30 天</button>
-        <button type="button" onClick={() => setPreset('90d')}>近 90 天</button>
-        <button type="button" onClick={() => setPreset('future')}>今天以后</button>
-        <button type="button" onClick={() => setPreset('all')}>完整计划</button>
+      <div className="export-range-copy"><h3>{t('exportPage.exportDateRange')}</h3><p>{t('exportPage.dateRangeDescription')}</p></div>
+      <div className="export-presets" aria-label={t('exportPage.dateRangePresetsAria')}>
+        <button type="button" onClick={() => setPreset('recent')}>{t('exportPage.last7Days')}</button>
+        <button type="button" onClick={() => setPreset('30d')}>{t('exportPage.last30Days')}</button>
+        <button type="button" onClick={() => setPreset('90d')}>{t('exportPage.last90Days')}</button>
+        <button type="button" onClick={() => setPreset('future')}>{t('exportPage.fromToday')}</button>
+        <button type="button" onClick={() => setPreset('all')}>{t('exportPage.wholePlan')}</button>
       </div>
       <div className="export-date-fields">
-        <label><span>开始日期</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={start} onChange={event => { setStart(event.target.value); setNotice('') }}/></label>
-        <span className="export-date-arrow">至</span>
-        <label><span>结束日期</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={end} onChange={event => { setEnd(event.target.value); setNotice('') }}/></label>
+        <label><span>{t('exportPage.startDate')}</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={start} onChange={event => { setStart(event.target.value); setNotice('') }}/></label>
+        <span className="export-date-arrow">{t('exportPage.to')}</span>
+        <label><span>{t('exportPage.endDate')}</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={end} onChange={event => { setEnd(event.target.value); setNotice('') }}/></label>
       </div>
-      {!valid && <p className="form-error" role="alert">结束日期不能早于开始日期。</p>}
-      {summary && <div className="export-range-summary" aria-label="导出范围摘要">
-        <span><strong>{summary.days}</strong> 天</span>
-        <span><strong>{summary.assignments}</strong> 项已排任务</span>
-        <span><strong>{minutesText(summary.plannedMinutes)}</strong> 原计划</span>
-        <span><strong>{minutesText(summary.actualMinutes)}</strong> 已发生实际</span>
+      {!valid && <p className="form-error" role="alert">{t('exportPage.endBeforeStartError')}</p>}
+      {summary && <div className="export-range-summary" aria-label={t('exportPage.rangeSummaryAria')}>
+        <span><strong>{summary.days}</strong> {t('exportPage.days')}</span>
+        <span><strong>{summary.assignments}</strong> {t('exportPage.scheduledTasks')}</span>
+        <span><strong>{minutesText(summary.plannedMinutes)}</strong> {t('exportPage.originalPlan')}</span>
+        <span><strong>{minutesText(summary.actualMinutes)}</strong> {t('exportPage.actualOccurred')}</span>
       </div>}
     </section>
 
@@ -196,64 +202,64 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
       <div className="export-task-image-header">
         <div className="export-task-image-title">
           <span aria-hidden="true"><FileImage size={22}/></span>
-          <div><h3 id="export-task-image-title">任务清单长图</h3><p>按日期连续列出所选范围内的全部任务，完成、部分完成和未完成状态都会保留；内容较多时会自动生成纵向长图。</p></div>
+          <div><h3 id="export-task-image-title">{t('exportPage.taskImageTitle')}</h3><p>{t('exportPage.taskImageDescription')}</p></div>
         </div>
-        <div className="export-task-image-actions"><span>已选 {taskImageColumns.length} 列</span><button type="button" className="text-button" onClick={() => setTaskImageColumns([...defaultTaskTableImageColumns])}>恢复默认</button></div>
+        <div className="export-task-image-actions"><span>{t('exportPage.columnsSelected', { count: taskImageColumns.length })}</span><button type="button" className="text-button" onClick={() => setTaskImageColumns([...defaultTaskTableImageColumns])}>{t('exportPage.restoreDefault')}</button></div>
       </div>
-      <div className="export-column-grid" aria-label="选择长图列">
+      <div className="export-column-grid" aria-label={t('exportPage.chooseColumnsAria')}>
         {taskTableImageColumnOptions.map(option => <label key={option.key} className="export-column-choice"><input type="checkbox" checked={taskImageColumns.includes(option.key)} onChange={() => toggleTaskImageColumn(option.key)}/><span>{option.label}</span></label>)}
       </div>
       <div className="export-task-image-footer">
-        <span>{summary ? `${summary.assignments} 项任务将写入长图` : '请先选择有效日期范围'}</span>
-        <button type="button" className="primary-button" disabled={!valid || !summary?.assignments} onClick={downloadTaskTableImage}><FileImage size={16}/>下载长图 PNG</button>
+        <span>{summary ? t('exportPage.tasksWillBeIncluded', { count: summary.assignments }) : t('exportPage.selectValidRangeFirst')}</span>
+        <button type="button" className="primary-button" disabled={!valid || !summary?.assignments} onClick={downloadTaskTableImage}><FileImage size={16}/>{t('exportPage.downloadImagePng')}</button>
       </div>
     </section>
 
     <section className="export-section-picker" aria-labelledby="export-report-sections-title">
       <div className="export-section-picker-header">
-        <div><h3 id="export-report-sections-title">PDF 报告内容</h3><p>默认包含统计页的全部模块。每天任务清单会按日期列出已完成、部分完成和未完成任务；你也可以只保留需要分享的部分。</p></div>
-        <div className="export-section-picker-actions"><span>{Object.values(reportSections).filter(Boolean).length}/{reportSectionOptions.length} 个模块</span><button type="button" className="text-button" onClick={() => setReportSections({ ...defaultStatisticsReportSections })}>全部选择</button><button type="button" className="text-button" onClick={() => setReportSections({ ...coreReportSections })}>只保留核心</button></div>
+        <div><h3 id="export-report-sections-title">{t('exportPage.pdfReportContent')}</h3><p>{t('exportPage.pdfReportDescription')}</p></div>
+        <div className="export-section-picker-actions"><span>{t('exportPage.modulesSelected', { selected: Object.values(reportSections).filter(Boolean).length, total: reportSectionOptions.length })}</span><button type="button" className="text-button" onClick={() => setReportSections({ ...defaultStatisticsReportSections })}>{t('exportPage.selectAll')}</button><button type="button" className="text-button" onClick={() => setReportSections({ ...coreReportSections })}>{t('exportPage.coreOnly')}</button></div>
       </div>
       <div className="export-section-grid">
         {reportSectionOptions.map(option => <label key={option.key} className="export-section-choice"><input type="checkbox" checked={reportSections[option.key]} onChange={() => setReportSections(current => ({ ...current, [option.key]: !current[option.key] }))}/><span><strong>{option.title}</strong><small>{option.description}</small></span></label>)}
       </div>
     </section>
 
-    <section className="export-options" aria-label="可用导出格式">
+    <section className="export-options" aria-label={t('exportPage.availableFormatsAria')}>
       <article className="export-card export-card-stats export-card-featured">
         <div className="export-card-icon"><BarChart3 size={22}/></div>
-        <div className="export-card-copy"><h3>学习统计报告</h3><p>按上方日期范围生成美观的 PDF。报告先呈现范围概览，再按选择加入趋势、科目、目标、质量和时间流水等模块。</p></div>
+        <div className="export-card-copy"><h3>{t('exportPage.studyStatsReport')}</h3><p>{t('exportPage.studyStatsReportDescription')}</p></div>
         <div className="export-card-actions">
-          <button type="button" className="primary-button" disabled={!valid} onClick={openStatisticsReport}><Printer size={16}/>统计报告 PDF</button>
-          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport('统计 CSV', `${filenameBase}-statistics.csv`, buildStatisticsCsv(state, range), 'text/csv')}><FileSpreadsheet size={16}/>统计 CSV</button>
-          <button type="button" className="text-button" disabled={!valid} onClick={() => runExport('统计 HTML', `${filenameBase}-statistics.html`, buildStatisticsReportHtml(state, range, reportSections), 'text/html')}><FileText size={16}/>HTML</button>
+          <button type="button" className="primary-button" disabled={!valid} onClick={openStatisticsReport}><Printer size={16}/>{t('exportPage.statsReportPdf')}</button>
+          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport(t('exportPage.statsCsvLabel'), `${filenameBase}-statistics.csv`, buildStatisticsCsv(state, range), 'text/csv')}><FileSpreadsheet size={16}/>{t('exportPage.statsCsv')}</button>
+          <button type="button" className="text-button" disabled={!valid} onClick={() => runExport(t('exportPage.statsHtmlLabel'), `${filenameBase}-statistics.html`, buildStatisticsReportHtml(state, range, reportSections), 'text/html')}><FileText size={16}/>HTML</button>
         </div>
       </article>
 
       <article className="export-card export-card-calendar export-card-featured">
         <div className="export-card-icon"><CalendarDays size={22}/></div>
-        <div className="export-card-copy"><h3>月历图片与 PDF</h3><p>选择一个月份。PDF 先给月历总览，再附上这个月的全部任务明细；PNG 会按任务数量自适应高度，减少每天任务被截断。</p></div>
-        <div className="export-month-choice"><label><span>月历月份</span><input type="month" min={state.settings.startDate.slice(0, 7)} max={state.settings.endDate.slice(0, 7)} value={calendarMonth} onChange={event => setCalendarMonth(event.target.value)}/></label><small>{calendarRange.start} 至 {calendarRange.end}</small></div>
+        <div className="export-card-copy"><h3>{t('exportPage.calendarImageAndPdf')}</h3><p>{t('exportPage.calendarImageAndPdfDescription')}</p></div>
+        <div className="export-month-choice"><label><span>{t('exportPage.calendarMonth')}</span><input type="month" min={state.settings.startDate.slice(0, 7)} max={state.settings.endDate.slice(0, 7)} value={calendarMonth} onChange={event => setCalendarMonth(event.target.value)}/></label><small>{t('exportPage.rangeToRange', { start: calendarRange.start, end: calendarRange.end })}</small></div>
         <div className="export-card-actions">
-          <button type="button" className="primary-button" onClick={openCalendarReport}><Printer size={16}/>月历 PDF</button>
-          <button type="button" className="secondary-button" onClick={downloadCalendarImage}><Download size={16}/>月历 PNG</button>
-          <button type="button" className="text-button" onClick={() => runExport('月历 CSV', `${calendarFilenameBase}.csv`, buildCalendarCsv(state, calendarRange), 'text/csv')}><FileSpreadsheet size={16}/>CSV</button>
+          <button type="button" className="primary-button" onClick={openCalendarReport}><Printer size={16}/>{t('exportPage.calendarPdf')}</button>
+          <button type="button" className="secondary-button" onClick={downloadCalendarImage}><Download size={16}/>{t('exportPage.calendarPng')}</button>
+          <button type="button" className="text-button" onClick={() => runExport(t('exportPage.calendarCsvLabel'), `${calendarFilenameBase}.csv`, buildCalendarCsv(state, calendarRange), 'text/csv')}><FileSpreadsheet size={16}/>CSV</button>
         </div>
       </article>
 
       <article className="export-card export-card-ledger">
         <div className="export-card-icon"><Clock3 size={22}/></div>
-        <div className="export-card-copy"><h3>实际时间流水</h3><p>逐条导出实际发生日期、任务、分钟、计时或手动来源，以及创建和修改时间，适合核对统计。</p></div>
+        <div className="export-card-copy"><h3>{t('exportPage.actualTimeLedger')}</h3><p>{t('exportPage.actualTimeLedgerDescription')}</p></div>
         <div className="export-card-actions">
-          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport('时间流水 CSV', `${filenameBase}-time-ledger.csv`, buildTimeLedgerCsv(state, range), 'text/csv')}><Download size={16}/>下载流水 CSV</button>
+          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport(t('exportPage.timeLedgerCsvLabel'), `${filenameBase}-time-ledger.csv`, buildTimeLedgerCsv(state, range), 'text/csv')}><Download size={16}/>{t('exportPage.downloadLedgerCsv')}</button>
         </div>
       </article>
 
       <article className="export-card export-card-calendar">
         <div className="export-card-icon"><CalendarDays size={22}/></div>
-        <div className="export-card-copy"><h3>系统日历</h3><p>将选择范围内的已排任务导出到 Apple 日历、Google 日历或其他支持 ICS 的应用。</p></div>
+        <div className="export-card-copy"><h3>{t('exportPage.systemCalendar')}</h3><p>{t('exportPage.systemCalendarDescription')}</p></div>
         <div className="export-card-actions">
-          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport('日历 ICS', `${filenameBase}-calendar.ics`, buildCalendarIcs(state, range), 'text/calendar')}><CalendarDays size={16}/>下载 ICS</button>
+          <button type="button" className="secondary-button" disabled={!valid} onClick={() => runExport(t('exportPage.calendarIcsLabel'), `${filenameBase}-calendar.ics`, buildCalendarIcs(state, range), 'text/calendar')}><CalendarDays size={16}/>{t('exportPage.downloadIcs')}</button>
         </div>
       </article>
     </section>
@@ -262,8 +268,8 @@ export function ExportPage({ onNavigate }: { onNavigate: (page: ExportPageId) =>
 
     <section className="export-privacy">
       <ShieldCheck size={22}/>
-      <div><h3>导出文件只在本机生成</h3><p>PDF 通过浏览器打印窗口生成；选择“另存为 PDF”即可保存。文件可能包含个人任务与学习时间，分享前请先检查。</p></div>
-      <button type="button" className="secondary-button" onClick={() => onNavigate('settings')}><Database size={16}/>前往备份设置</button>
+      <div><h3>{t('exportPage.privacyTitle')}</h3><p>{t('exportPage.privacyDescription')}</p></div>
+      <button type="button" className="secondary-button" onClick={() => onNavigate('settings')}><Database size={16}/>{t('exportPage.goToBackupSettings')}</button>
     </section>
   </div>
 }

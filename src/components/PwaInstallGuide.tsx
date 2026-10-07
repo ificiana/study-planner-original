@@ -13,6 +13,10 @@ import {
   type InstallPlatform,
 } from '../pwa-install'
 import '../pwa-install.css'
+import { useT, variantsOfZh } from '../lib/i18n'
+import type { Primitive } from '../lib/i18n/types'
+
+type Translate = (key: string, vars?: Record<string, Primitive>) => string
 
 // 优先选择能把关键菜单项完整展示出来的中文截图；若第三方图片失效，下面还有
 // 内置中文示意图兜底，避免用户只看到“图片加载失败”。
@@ -25,39 +29,40 @@ const CHROME_SUPPORT_URL = 'https://support.google.com/chrome/answer/9658361?hl=
 
 type InstallRequestDetail = { open?: boolean; install?: boolean }
 
-function platformLabel(platform: InstallPlatform) {
-  if (platform === 'ios') return 'iPhone / iPad'
-  if (platform === 'android') return 'Android'
-  if (platform === 'desktop') return '电脑'
-  return '当前设备'
+function platformLabel(platform: InstallPlatform, t: Translate) {
+  if (platform === 'ios') return t('pwaInstall.platformIos')
+  if (platform === 'android') return t('pwaInstall.platformAndroid')
+  if (platform === 'desktop') return t('pwaInstall.platformDesktop')
+  return t('pwaInstall.platformUnknown')
 }
 
-function platformSummary(platform: InstallPlatform) {
-  if (platform === 'ios') return 'Safari 需要通过“共享 → 添加到主屏幕”手动完成。'
-  if (platform === 'android') return 'Chrome 通常可以直接安装，也可以从右上角菜单进入“安装应用”。'
-  if (platform === 'desktop') return 'Chrome / Edge 可通过地址栏安装图标，或菜单中的“将网页安装为应用”。'
-  return '支持安装的浏览器通常会在地址栏或浏览器菜单提供“安装应用 / 添加到主屏幕”。'
+function platformSummary(platform: InstallPlatform, t: Translate) {
+  if (platform === 'ios') return t('pwaInstall.summaryIos')
+  if (platform === 'android') return t('pwaInstall.summaryAndroid')
+  if (platform === 'desktop') return t('pwaInstall.summaryDesktop')
+  return t('pwaInstall.summaryDefault')
 }
 
 function GuideDiagramFallback({ platform, alt }: { platform: InstallPlatform; alt: string }) {
+  const t = useT()
   if (platform === 'ios') {
     return <div className="pwa-guide-visual-fallback pwa-guide-diagram" role="img" aria-label={alt}>
-      <div className="pwa-diagram-browser-bar"><span>Safari</span><b>分享 ↑</b></div>
-      <div className="pwa-diagram-menu"><span>加入阅读列表</span><span>添加书签</span><strong>添加到主屏幕 ＋</strong><span>在页面上查找</span></div>
-      <small>关键位置：共享 → 添加到主屏幕</small>
+      <div className="pwa-diagram-browser-bar"><span>Safari</span><b>{t('pwaInstall.iosDiagramShare')}</b></div>
+      <div className="pwa-diagram-menu"><span>{t('pwaInstall.iosDiagramMenu1')}</span><span>{t('pwaInstall.iosDiagramMenu2')}</span><strong>{t('pwaInstall.iosDiagramMenu3')}</strong><span>{t('pwaInstall.iosDiagramMenu4')}</span></div>
+      <small>{t('pwaInstall.iosDiagramHint')}</small>
     </div>
   }
   if (platform === 'android') {
     return <div className="pwa-guide-visual-fallback pwa-guide-diagram" role="img" aria-label={alt}>
       <div className="pwa-diagram-browser-bar"><span>Chrome</span><b>⋮</b></div>
-      <div className="pwa-diagram-menu"><span>新建标签页</span><span>分享…</span><strong>安装应用 / 添加到主屏幕</strong><span>设置</span></div>
-      <small>关键位置：右上角 ⋮ → 安装应用</small>
+      <div className="pwa-diagram-menu"><span>{t('pwaInstall.androidDiagramMenu1')}</span><span>{t('pwaInstall.androidDiagramMenu2')}</span><strong>{t('pwaInstall.androidDiagramMenu3')}</strong><span>{t('pwaInstall.androidDiagramMenu4')}</span></div>
+      <small>{t('pwaInstall.androidDiagramHint')}</small>
     </div>
   }
   return <div className="pwa-guide-visual-fallback pwa-guide-diagram" role="img" aria-label={alt}>
     <div className="pwa-diagram-browser-bar"><span>Chrome / Edge</span><b>⋮</b></div>
-    <div className="pwa-diagram-menu"><span>打印…</span><span>投放、保存和分享</span><strong>将网页作为应用安装…</strong><span>更多工具</span></div>
-    <small>关键位置：浏览器菜单 → 将网页作为应用安装</small>
+    <div className="pwa-diagram-menu"><span>{t('pwaInstall.desktopDiagramMenu1')}</span><span>{t('pwaInstall.desktopDiagramMenu2')}</span><strong>{t('pwaInstall.desktopDiagramMenu3')}</strong><span>{t('pwaInstall.desktopDiagramMenu4')}</span></div>
+    <small>{t('pwaInstall.desktopDiagramHint')}</small>
   </div>
 }
 
@@ -72,68 +77,71 @@ function PlatformIcon() {
 }
 
 export function PwaInstallGuideContent({ platform = installPlatform(), compact = false }: { platform?: InstallPlatform; compact?: boolean }) {
+  const t = useT()
   const standalone = isStandaloneMode()
   const iosSafari = platform !== 'ios' || isIosSafari()
 
   if (standalone) {
-    return <div className="pwa-installed-state"><CheckCircle2 size={22}/><div><strong>已经是应用模式</strong><p>你现在就是从主屏幕 / 已安装应用打开的，不需要再次安装。</p></div></div>
+    return <div className="pwa-installed-state"><CheckCircle2 size={22}/><div><strong>{t('pwaInstall.installedTitle')}</strong><p>{t('pwaInstall.installedBody')}</p></div></div>
   }
 
   return <div className={`pwa-guide-content ${compact ? 'is-compact' : ''}`}>
     <div className="pwa-guide-current">
-      <span>{platformLabel(platform)}</span>
-      <strong>{platformSummary(platform)}</strong>
-      {platform === 'ios' && !iosSafari && <p>当前不是 Safari。iPhone / iPad 建议复制网址到 Safari 后再按下面步骤操作。</p>}
+      <span>{platformLabel(platform, t)}</span>
+      <strong>{platformSummary(platform, t)}</strong>
+      {platform === 'ios' && !iosSafari && <p>{t('pwaInstall.notSafariNote')}</p>}
     </div>
 
     <div className="pwa-guide-platforms">
       <article className={`pwa-guide-platform ${platform === 'ios' ? 'is-current' : ''}`}>
         <div className="pwa-guide-platform-title"><PlatformIcon/><div><strong>iPhone / iPad</strong><span>Safari</span></div></div>
         <ol>
-          <li><b>1</b><span>用 Safari 打开学习计划网站。</span></li>
-          <li><b>2</b><span>点浏览器的“共享”按钮，再向下找到“添加到主屏幕”。</span></li>
-          <li><b>3</b><span>如有“作为网页 App 打开”，保持开启，然后点“添加”。</span></li>
+          <li><b>1</b><span>{t('pwaInstall.iosStep1')}</span></li>
+          <li><b>2</b><span>{t('pwaInstall.iosStep2')}</span></li>
+          <li><b>3</b><span>{t('pwaInstall.iosStep3')}</span></li>
         </ol>
-        {!compact && <GuideVisual platform="ios" src={IOS_GUIDE_IMAGE} alt="iPhone Safari 简体中文界面的添加到主屏幕操作示意图"/>}
-        <small className="pwa-guide-image-note">图片会完整显示，不再裁掉“添加到主屏幕”；不同 iOS 版本按钮位置可能略有差异。</small>
-        <a href={APPLE_SUPPORT_URL} target="_blank" rel="noreferrer">Apple 官方说明<ArrowUpRight size={13}/></a>
+        {!compact && <GuideVisual platform="ios" src={IOS_GUIDE_IMAGE} alt={t('pwaInstall.iosImageAlt')}/>}
+        <small className="pwa-guide-image-note">{t('pwaInstall.iosImageNote')}</small>
+        <a href={APPLE_SUPPORT_URL} target="_blank" rel="noreferrer">{t('pwaInstall.appleSupportLink')}<ArrowUpRight size={13}/></a>
       </article>
 
       <article className={`pwa-guide-platform ${platform === 'android' ? 'is-current' : ''}`}>
         <div className="pwa-guide-platform-title"><PlatformIcon/><div><strong>Android</strong><span>Chrome</span></div></div>
         <ol>
-          <li><b>1</b><span>用 Chrome 打开学习计划网站。</span></li>
-          <li><b>2</b><span>点右上角“⋮”菜单，选择“安装应用”或“添加到主屏幕”。</span></li>
-          <li><b>3</b><span>在系统安装框中确认“安装”。</span></li>
+          <li><b>1</b><span>{t('pwaInstall.androidStep1')}</span></li>
+          <li><b>2</b><span>{t('pwaInstall.androidStep2')}</span></li>
+          <li><b>3</b><span>{t('pwaInstall.androidStep3')}</span></li>
         </ol>
-        {!compact && <GuideVisual platform="android" src={ANDROID_GUIDE_IMAGE} alt="Android Chrome 中文界面的添加到主屏幕操作示意图"/>}
-        <a href={CHROME_SUPPORT_URL} target="_blank" rel="noreferrer">Chrome 官方说明<ArrowUpRight size={13}/></a>
+        {!compact && <GuideVisual platform="android" src={ANDROID_GUIDE_IMAGE} alt={t('pwaInstall.androidImageAlt')}/>}
+        <a href={CHROME_SUPPORT_URL} target="_blank" rel="noreferrer">{t('pwaInstall.chromeSupportLink')}<ArrowUpRight size={13}/></a>
       </article>
 
       <article className={`pwa-guide-platform ${platform === 'desktop' ? 'is-current' : ''}`}>
         <div className="pwa-guide-platform-title"><PlatformIcon/><div><strong>Windows / Mac</strong><span>Chrome / Edge</span></div></div>
         <ol>
-          <li><b>1</b><span>打开学习计划网站，查看地址栏右侧是否出现安装图标。</span></li>
-          <li><b>2</b><span>没有图标时，打开浏览器菜单，选择“将网页安装为应用 / 安装应用”。</span></li>
-          <li><b>3</b><span>确认安装后，可以从桌面、Dock 或开始菜单直接打开。</span></li>
+          <li><b>1</b><span>{t('pwaInstall.desktopStep1')}</span></li>
+          <li><b>2</b><span>{t('pwaInstall.desktopStep2')}</span></li>
+          <li><b>3</b><span>{t('pwaInstall.desktopStep3')}</span></li>
         </ol>
-        {!compact && <GuideVisual platform="desktop" src={DESKTOP_GUIDE_IMAGE} alt="Chrome 桌面端中文界面的将网页作为应用安装操作示意图"/>}
-        <small className="pwa-guide-image-note">即使在线截图无法加载，也会显示内置中文菜单示意图，不会再出现空白。</small>
-        <a href={CHROME_SUPPORT_URL} target="_blank" rel="noreferrer">Chrome 官方说明<ArrowUpRight size={13}/></a>
+        {!compact && <GuideVisual platform="desktop" src={DESKTOP_GUIDE_IMAGE} alt={t('pwaInstall.desktopImageAlt')}/>}
+        <small className="pwa-guide-image-note">{t('pwaInstall.desktopImageNote')}</small>
+        <a href={CHROME_SUPPORT_URL} target="_blank" rel="noreferrer">{t('pwaInstall.chromeSupportLink')}<ArrowUpRight size={13}/></a>
       </article>
     </div>
   </div>
 }
 
 export function PwaInstallGuideSection() {
+  const t = useT()
   const platform = useMemo(() => installPlatform(), [])
   return <section className="guide-section pwa-guide-section" id="install-app">
-    <div className="guide-section-heading"><div><span className="guide-eyebrow">更像 App 一样使用</span><h3>添加到主屏幕</h3><p>如果你经常用学习计划，建议安装到主屏幕。以后可以直接点图标打开，不用每次从浏览器标签页里找。</p></div></div>
+    <div className="guide-section-heading"><div><span className="guide-eyebrow">{t('pwaInstall.sectionEyebrow')}</span><h3>{t('pwaInstall.sectionTitle')}</h3><p>{t('pwaInstall.sectionBody')}</p></div></div>
     <PwaInstallGuideContent platform={platform}/>
   </section>
 }
 
 export function PwaInstallPrompt() {
+  const t = useT()
   const [visible, setVisible] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent>()
@@ -181,7 +189,7 @@ export function PwaInstallPrompt() {
     const onDocumentClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : undefined
       const button = target?.closest('button')
-      const finishingTutorial = Boolean(button?.closest('.tutorial-coachmark') && button.textContent?.trim() === '开始我的计划')
+      const finishingTutorial = Boolean(button?.closest('.tutorial-coachmark') && variantsOfZh('开始我的计划').includes(button.textContent?.trim() ?? ''))
       if (finishingTutorial) {
         // 完整互动教程结束后直接接图文 PWA 教程，而不是再等下一次访问。
         schedule(() => showGuideAfterTutorial(), 700)
@@ -261,23 +269,23 @@ export function PwaInstallPrompt() {
 
   return <>
     {visible && <aside className="pwa-install-nudge" role="status" aria-live="polite">
-      <button type="button" className="pwa-install-close" aria-label="关闭安装提示" onClick={later}><X size={17}/></button>
+      <button type="button" className="pwa-install-close" aria-label={t('pwaInstall.nudgeCloseAriaLabel')} onClick={later}><X size={17}/></button>
       <div className="pwa-install-nudge-icon"><Download size={20}/></div>
-      <div className="pwa-install-nudge-copy"><strong>添加到主屏幕，打开更方便</strong><p>{platformSummary(platform)}</p></div>
+      <div className="pwa-install-nudge-copy"><strong>{t('pwaInstall.nudgeTitle')}</strong><p>{platformSummary(platform, t)}</p></div>
       <div className="pwa-install-nudge-actions">
-        <button type="button" className="primary-button" disabled={installing} onClick={() => void install()}>{installing ? '正在打开…' : deferredPrompt ? '直接安装' : '查看安装方法'}</button>
-        <button type="button" className="text-button" onClick={later}>7 天后提醒</button>
-        <button type="button" className="text-button pwa-install-never" onClick={never}>不再提醒</button>
+        <button type="button" className="primary-button" disabled={installing} onClick={() => void install()}>{installing ? t('pwaInstall.opening') : deferredPrompt ? t('pwaInstall.installButton') : t('pwaInstall.viewMethod')}</button>
+        <button type="button" className="text-button" onClick={later}>{t('pwaInstall.remindLater')}</button>
+        <button type="button" className="text-button pwa-install-never" onClick={never}>{t('pwaInstall.neverRemind')}</button>
       </div>
     </aside>}
 
     {guideOpen && <div className="pwa-guide-modal-backdrop" role="presentation" onMouseDown={event => { if (event.currentTarget === event.target) setGuideOpen(false) }}>
-      <section className="pwa-guide-modal" role="dialog" aria-modal="true" aria-label="添加到主屏幕教程">
-        <div className="pwa-guide-modal-head"><div><span>安装学习计划</span><strong>把网站放到主屏幕 / 桌面</strong></div><button type="button" aria-label="关闭安装教程" onClick={() => setGuideOpen(false)}><X size={19}/></button></div>
+      <section className="pwa-guide-modal" role="dialog" aria-modal="true" aria-label={t('pwaInstall.modalAriaLabel')}>
+        <div className="pwa-guide-modal-head"><div><span>{t('pwaInstall.modalEyebrow')}</span><strong>{t('pwaInstall.modalHeadline')}</strong></div><button type="button" aria-label={t('pwaInstall.closeModalAriaLabel')} onClick={() => setGuideOpen(false)}><X size={19}/></button></div>
         <PwaInstallGuideContent platform={platform}/>
         <div className="pwa-guide-modal-actions">
-          {deferredPrompt && <button type="button" className="primary-button" disabled={installing} onClick={() => void install()}><Download size={15}/>{installing ? '正在打开…' : '直接安装'}</button>}
-          <button type="button" className="secondary-button" onClick={() => setGuideOpen(false)}>我知道了</button>
+          {deferredPrompt && <button type="button" className="primary-button" disabled={installing} onClick={() => void install()}><Download size={15}/>{installing ? t('pwaInstall.opening') : t('pwaInstall.installButton')}</button>}
+          <button type="button" className="secondary-button" onClick={() => setGuideOpen(false)}>{t('pwaInstall.gotIt')}</button>
         </div>
       </section>
     </div>}

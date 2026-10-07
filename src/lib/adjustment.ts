@@ -1,4 +1,5 @@
 import type { PlanAdjustmentPolicy, PlanChangeEvent, SchedulingPreference } from '../types'
+import { translate, type Language } from './i18n'
 
 const allPreferences: SchedulingPreference[] = ['preserve', 'balanced', 'goal', 'rest']
 
@@ -13,7 +14,8 @@ function alternatives(primary: SchedulingPreference, preferred?: unknown, ordere
  * 场景协调策略：先判断用户意图是否已经完整，再决定是精确校验、推荐预览还是探索式优化。
  * 底层仍只保留一套调度引擎；这里负责避免所有业务变化都被粗暴送进“四方案重排”。
  */
-export function adjustmentPolicyForEvent(event: PlanChangeEvent): PlanAdjustmentPolicy {
+export function adjustmentPolicyForEvent(event: PlanChangeEvent, language: Language = 'zh'): PlanAdjustmentPolicy {
+  const t = (key: string) => translate(language, key)
   const metadata = event.metadata ?? {}
   const preferred = metadata.preferredPreferences
   const direct = (label: string, explanation: string, primary: SchedulingPreference = 'preserve'): PlanAdjustmentPolicy => ({
@@ -38,48 +40,48 @@ export function adjustmentPolicyForEvent(event: PlanChangeEvent): PlanAdjustment
   })
 
   if (metadata.explicitLocalOperation === true || event.type === 'assignment-deletion' || event.type === 'group-deletion') {
-    const localLabel = typeof metadata.requestedChangeLabel === 'string' ? metadata.requestedChangeLabel : '仅执行本次操作'
-    return optional(localLabel, '第一方案只实现用户刚才明确要求的变化；其他任务保持不变。计划原有问题只提示，不会借机扩大为整份计划重排。更大范围修复仅在用户主动获取更多方案时生成。')
+    const localLabel = typeof metadata.requestedChangeLabel === 'string' ? metadata.requestedChangeLabel : t('adjustment.localOnly.label')
+    return optional(localLabel, t('adjustment.localOnly.explanation'))
   }
   if (event.type === 'execution-difference' && metadata.requestedCarryDates) {
-    return direct('按你在复盘中的选择执行', '先逐项校验用户已经选定的日期；合法项不会再交给系统重新决定。')
+    return direct(t('adjustment.executionDifferenceCarry.label'), t('adjustment.executionDifferenceCarry.explanation'))
   }
   if (event.type === 'bulk-move') {
-    return direct('按你指定的批量移动执行', '先校验用户指定的目标日期；只有冲突项才需要系统提供替代方案。')
+    return direct(t('adjustment.bulkMove.label'), t('adjustment.bulkMove.explanation'))
   }
   if (event.type === 'rule-change' && metadata.currentEstimate != null) {
-    return direct('更新预计时长并保持日期', '先检查新预计是否让现有日期产生硬冲突；没有冲突时不重排。')
+    return direct(t('adjustment.ruleChangeEstimate.label'), t('adjustment.ruleChangeEstimate.explanation'))
   }
   if (event.type === 'goal-relaxation' || event.type === 'goal-deletion') {
-    return optional('保存目标变化并保持当前排期', '约束已经放宽，默认不把任务推迟；用户可主动比较减负或重新分配方案。', 'preserve', ['rest', 'balanced', 'goal'])
+    return optional(t('adjustment.goalRelaxation.label'), t('adjustment.goalRelaxation.explanation'), 'preserve', ['rest', 'balanced', 'goal'])
   }
   if (event.type === 'availability-change' && metadata.pureRelaxation === true) {
-    return optional('保存新的可用时间并保持当前排期', '新增容量不会自动把任务提前；用户可主动利用空间减轻未来负载。', 'preserve', ['rest', 'balanced', 'goal'])
+    return optional(t('adjustment.availabilityRelaxation.label'), t('adjustment.availabilityRelaxation.explanation'), 'preserve', ['rest', 'balanced', 'goal'])
   }
   if (event.type === 'load-preference-change') {
     const primary = (metadata.preferredPreference as SchedulingPreference | undefined) ?? 'rest'
-    return exploratory('生成减负推荐', '用户表达的是体验目标，系统先按所选减负结果生成推荐，再提供其他取舍。', primary, primary === 'rest' ? ['balanced', 'preserve', 'goal'] : ['rest', 'preserve', 'goal'])
+    return exploratory(t('adjustment.loadPreferenceChange.label'), t('adjustment.loadPreferenceChange.explanation'), primary, primary === 'rest' ? ['balanced', 'preserve', 'goal'] : ['rest', 'preserve', 'goal'])
   }
   if (event.type === 'future-replanning') {
     const primary = (metadata.preferredPreference as SchedulingPreference | undefined) ?? 'balanced'
-    return exploratory('重新组织剩余计划', '这是主动的未来优化，先给一个推荐结果，再允许比较其他实质不同方案。', primary)
+    return exploratory(t('adjustment.futureReplanning.label'), t('adjustment.futureReplanning.explanation'), primary)
   }
   if (event.type === 'new-task-insertion' || event.type === 'task-group-size-increase') {
-    return recommended('推荐插入方案', '先尝试零移动，再以最低扰动安置新任务；用户也可查看其他方案或保留为未安排。')
+    return recommended(t('adjustment.newTaskInsertion.label'), t('adjustment.newTaskInsertion.explanation'))
   }
   if (event.type === 'goal-tightening') {
-    return recommended('推荐目标调整方案', '只优先处理满足新目标条件所需的任务，并保留手动安排。', 'goal')
+    return recommended(t('adjustment.goalTightening.label'), t('adjustment.goalTightening.explanation'), 'goal')
   }
   if (event.type === 'availability-change') {
-    return recommended('推荐日期调整方案', '先搬出容量下降或不可用范围内的任务，并平衡变化前后日期。')
+    return recommended(t('adjustment.availabilityChange.label'), t('adjustment.availabilityChange.explanation'))
   }
   if (event.type === 'rule-change') {
-    return recommended('推荐最小修复方案', '规则变化后只修复新增冲突，不主动重写整个未来计划。')
+    return recommended(t('adjustment.ruleChange.label'), t('adjustment.ruleChange.explanation'))
   }
   if (event.type === 'execution-difference') {
-    return recommended('推荐冲突修复方案', '只处理当前检测到的问题；不会要求用户先理解内部算法模式。')
+    return recommended(t('adjustment.executionDifference.label'), t('adjustment.executionDifference.explanation'))
   }
-  return recommended('推荐计划调整', '先展示一个符合当前场景的推荐，再由用户决定是否比较其他方案。')
+  return recommended(t('adjustment.default.label'), t('adjustment.default.explanation'))
 }
 
 export function eventWithPreferences(event: PlanChangeEvent, preferences: SchedulingPreference[]): PlanChangeEvent {

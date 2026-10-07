@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { pendingSignupInfo, recordSignupConfirmedIfPending, subscribePendingSignup } from '../lib/analytics'
 import { resendSignupConfirmation, supabase } from '../lib/supabase'
+import { useT } from '../lib/i18n'
 
 const PENDING_SIGNUP_KEY = 'study-planner:pending-signup-v1'
 
 export function EmailVerificationBanner() {
+  const t = useT()
   const [pending, setPending] = useState(() => pendingSignupInfo())
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -71,9 +73,9 @@ export function EmailVerificationBanner() {
       setSending(true)
       setMessage('')
       await resendSignupConfirmation(pending.email)
-      setMessage('验证邮件已重新发送。请检查收件箱、垃圾邮件和广告/订阅分类。')
+      setMessage(t('emailBanner.resendSuccess'))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '重新发送失败，请稍后再试。')
+      setMessage(error instanceof Error ? error.message : t('emailBanner.resendError'))
     } finally {
       setSending(false)
     }
@@ -83,16 +85,16 @@ export function EmailVerificationBanner() {
     <button
       type="button"
       className="email-verification-dismiss"
-      aria-label="暂时关闭邮箱验证提示"
-      title="暂时关闭"
+      aria-label={t('emailBanner.closeAriaLabel')}
+      title={t('emailBanner.closeTitle')}
       onClick={() => setDismissed(true)}
     >×</button>
     <div>
-      <strong>还差一步：必须验证邮箱</strong>
-      <p>注册不会自动完成。请打开发送到 <b>{pending.email}</b> 的验证邮件并点击确认链接，验证后才能正常登录和使用云同步。</p>
-      <small>验证成功后提示会自动消失。如果几分钟内没看到邮件，请检查垃圾邮件、广告/订阅分类，并确认邮箱地址没有输错。</small>
+      <strong>{t('emailBanner.title')}</strong>
+      <p>{t('emailBanner.body', { email: pending.email })}</p>
+      <small>{t('emailBanner.note')}</small>
       {message && <p className="email-verification-message">{message}</p>}
     </div>
-    <button type="button" className="secondary-button" disabled={sending} onClick={() => void resend()}>{sending ? '发送中……' : '重新发送验证邮件'}</button>
+    <button type="button" className="secondary-button" disabled={sending} onClick={() => void resend()}>{sending ? t('emailBanner.resending') : t('emailBanner.resendButton')}</button>
   </aside>
 }

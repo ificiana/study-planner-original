@@ -5,12 +5,13 @@ import { defaultSettings } from './seed'
 import { updateGoalAndGroupLifecycle } from './goals'
 import { analyzePlan, suggestMoveDates } from './planner'
 import { parsePastedText } from './intake'
+import { translate, tr, type Language } from './i18n'
 
 export const TUTORIAL_VERSION = 4
 export const TUTORIAL_NAMESPACE = `tutorial:v${TUTORIAL_VERSION}`
 export const TUTORIAL_GOAL_ID = 'tutorial-goal-math'
 export const TUTORIAL_NEW_GOAL_ID = 'tutorial-goal-new-work'
-export const TUTORIAL_NEW_GOAL_TITLE = '完成本周新增作业'
+export const tutorialNewGoalTitle = () => tr('tu.001')
 export const TUTORIAL_EXECUTE_ASSIGNMENT_ID = 'tutorial-task-math-today'
 export const TUTORIAL_PARTIAL_ASSIGNMENT_ID = 'tutorial-task-review-partial'
 export const TUTORIAL_UNFINISHED_ASSIGNMENT_ID = 'tutorial-task-review-unfinished'
@@ -281,26 +282,26 @@ function baseTutorialState(anchorDate: string): AppState {
   const goalLatest = shiftDate(anchorDate, 5)
   const now = stamp(anchorDate)
   const groups: TaskGroup[] = [
-    group({ id: 'tutorial-group-math', subject: '数学', title: '暑假数学复习', priority: 5, quantity: 4, unitMinutes: 60, targetDate: goalLatest, dueDate: goalLatest, activityType: 'math-paper', highIntensity: true }, anchorDate),
-    group({ id: 'tutorial-group-english', subject: '英语', title: '英语阅读训练', priority: 3, quantity: 2, unitMinutes: 55 }, anchorDate),
-    group({ id: 'tutorial-group-locked', subject: '物理', title: '老师指定复习', priority: 5, quantity: 1, unitMinutes: 45 }, anchorDate),
-    group({ id: 'tutorial-group-notes', subject: '语文', title: '课堂笔记整理', priority: 2, quantity: 2, unitMinutes: 25 }, anchorDate),
+    group({ id: 'tutorial-group-math', subject: '数学', title: tr('tu.002'), priority: 5, quantity: 4, unitMinutes: 60, targetDate: goalLatest, dueDate: goalLatest, activityType: 'math-paper', highIntensity: true }, anchorDate),
+    group({ id: 'tutorial-group-english', subject: '英语', title: tr('tu.003'), priority: 3, quantity: 2, unitMinutes: 55 }, anchorDate),
+    group({ id: 'tutorial-group-locked', subject: '物理', title: tr('tu.004'), priority: 5, quantity: 1, unitMinutes: 45 }, anchorDate),
+    group({ id: 'tutorial-group-notes', subject: '语文', title: tr('tu.005'), priority: 2, quantity: 2, unitMinutes: 25 }, anchorDate),
   ]
   const assignments: Assignment[] = [
-    assignment({ id: 'tutorial-task-done', groupId: 'tutorial-group-math', index: 1, title: '暑假数学复习 01', scheduledDate: shiftDate(anchorDate, -2), estimatedMinutes: 60, status: 'done', progress: 100, actualMinutes: 58, completedAt: stamp(shiftDate(anchorDate, -2), '19'), timeEntries: [{ id: 'tutorial-time-done', minutes: 58, createdAt: stamp(shiftDate(anchorDate, -2), '19'), source: 'manual', countInStatistics: true }] }, anchorDate),
-    assignment({ id: 'tutorial-task-overdue', groupId: 'tutorial-group-math', index: 2, title: '暑假数学复习 02', scheduledDate: shiftDate(anchorDate, -1), estimatedMinutes: 60 }, anchorDate),
-    assignment({ id: TUTORIAL_EXECUTE_ASSIGNMENT_ID, groupId: 'tutorial-group-math', index: 3, title: '暑假数学复习 03', scheduledDate: anchorDate, estimatedMinutes: 60, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
-    assignment({ id: 'tutorial-task-goal-risk', groupId: 'tutorial-group-math', index: 4, title: '暑假数学复习 04', scheduledDate: shiftDate(anchorDate, 8), estimatedMinutes: 60 }, anchorDate),
-    assignment({ id: 'tutorial-task-english-today', groupId: 'tutorial-group-english', index: 1, title: '英语阅读训练 01', scheduledDate: anchorDate, estimatedMinutes: 55 }, anchorDate),
-    assignment({ id: 'tutorial-task-english-future', groupId: 'tutorial-group-english', index: 2, title: '英语阅读训练 02', scheduledDate: shiftDate(anchorDate, 3), estimatedMinutes: 55 }, anchorDate),
-    assignment({ id: 'tutorial-task-locked', groupId: 'tutorial-group-locked', index: 1, title: '老师指定复习', scheduledDate: anchorDate, estimatedMinutes: 45, status: 'done', progress: 100, actualMinutes: 45, completedAt: stamp(anchorDate, '09'), timeEntries: [{ id: 'tutorial-time-locked', minutes: 45, createdAt: stamp(anchorDate, '09'), source: 'manual', countInStatistics: true }], locked: true, intentStrength: 'locked', scheduleSource: 'manual' }, anchorDate),
-    assignment({ id: TUTORIAL_PARTIAL_ASSIGNMENT_ID, groupId: 'tutorial-group-notes', index: 1, title: '整理课堂笔记', scheduledDate: anchorDate, estimatedMinutes: 25, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
-    assignment({ id: TUTORIAL_UNFINISHED_ASSIGNMENT_ID, groupId: 'tutorial-group-notes', index: 2, title: '整理错题索引', scheduledDate: anchorDate, estimatedMinutes: 30, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
+    assignment({ id: 'tutorial-task-done', groupId: 'tutorial-group-math', index: 1, title: tr('tu.006'), scheduledDate: shiftDate(anchorDate, -2), estimatedMinutes: 60, status: 'done', progress: 100, actualMinutes: 58, completedAt: stamp(shiftDate(anchorDate, -2), '19'), timeEntries: [{ id: 'tutorial-time-done', minutes: 58, createdAt: stamp(shiftDate(anchorDate, -2), '19'), source: 'manual', countInStatistics: true }] }, anchorDate),
+    assignment({ id: 'tutorial-task-overdue', groupId: 'tutorial-group-math', index: 2, title: tr('tu.007'), scheduledDate: shiftDate(anchorDate, -1), estimatedMinutes: 60 }, anchorDate),
+    assignment({ id: TUTORIAL_EXECUTE_ASSIGNMENT_ID, groupId: 'tutorial-group-math', index: 3, title: tr('tu.008'), scheduledDate: anchorDate, estimatedMinutes: 60, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
+    assignment({ id: 'tutorial-task-goal-risk', groupId: 'tutorial-group-math', index: 4, title: tr('tu.009'), scheduledDate: shiftDate(anchorDate, 8), estimatedMinutes: 60 }, anchorDate),
+    assignment({ id: 'tutorial-task-english-today', groupId: 'tutorial-group-english', index: 1, title: tr('tu.010'), scheduledDate: anchorDate, estimatedMinutes: 55 }, anchorDate),
+    assignment({ id: 'tutorial-task-english-future', groupId: 'tutorial-group-english', index: 2, title: tr('tu.011'), scheduledDate: shiftDate(anchorDate, 3), estimatedMinutes: 55 }, anchorDate),
+    assignment({ id: 'tutorial-task-locked', groupId: 'tutorial-group-locked', index: 1, title: tr('tu.004'), scheduledDate: anchorDate, estimatedMinutes: 45, status: 'done', progress: 100, actualMinutes: 45, completedAt: stamp(anchorDate, '09'), timeEntries: [{ id: 'tutorial-time-locked', minutes: 45, createdAt: stamp(anchorDate, '09'), source: 'manual', countInStatistics: true }], locked: true, intentStrength: 'locked', scheduleSource: 'manual' }, anchorDate),
+    assignment({ id: TUTORIAL_PARTIAL_ASSIGNMENT_ID, groupId: 'tutorial-group-notes', index: 1, title: tr('tu.012'), scheduledDate: anchorDate, estimatedMinutes: 25, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
+    assignment({ id: TUTORIAL_UNFINISHED_ASSIGNMENT_ID, groupId: 'tutorial-group-notes', index: 2, title: tr('tu.013'), scheduledDate: anchorDate, estimatedMinutes: 30, intentStrength: 'manual', scheduleSource: 'manual' }, anchorDate),
   ]
   const goals: Goal[] = [{
     id: TUTORIAL_GOAL_ID,
-    title: '暑假数学 · 5 天内完成',
-    description: '教程示例目标：让你看到目标日期会真正参与排期与风险判断。',
+    title: tr('tu.014'),
+    description: tr('tu.015'),
     priority: 5,
     desiredDate: shiftDate(anchorDate, 4),
     latestDate: goalLatest,
@@ -312,7 +313,7 @@ function baseTutorialState(anchorDate: string): AppState {
     updatedAt: now,
   }]
   const settings = defaultSettings({
-    planName: '教程体验 · 被现实打乱的计划',
+    planName: tr('tu.016'),
     startDate: start,
     endDate: end,
     regularMinutes: 160,
@@ -390,7 +391,7 @@ function intakeItemFromDraft(draft: TaskGroupDraft, index: number, anchorDate: s
 export function buildTutorialIntakeBatch(anchorDate: string, parsed = false, goalId?: string): IntakeBatch {
   const now = stamp(anchorDate, '12')
   const items = parsed ? tutorialParsedDrafts(anchorDate).map((draft, index) => intakeItemFromDraft(draft, index, anchorDate, goalId ? [goalId] : [])) : []
-  return { id: TUTORIAL_INTAKE_BATCH_ID, name: '刚收到的新作业', status: 'editing', source: parsed ? 'paste' : 'manual', taskGroups: items, createdAt: now, updatedAt: now }
+  return { id: TUTORIAL_INTAKE_BATCH_ID, name: tr('tu.022'), status: 'editing', source: parsed ? 'paste' : 'manual', taskGroups: items, createdAt: now, updatedAt: now }
 }
 
 export function ensureTutorialIntakeBatch(state: AppState, anchorDate: string): AppState {
@@ -410,8 +411,8 @@ function tutorialNewGoal(anchorDate: string): Goal {
   const now = stamp(anchorDate, '13')
   return {
     id: TUTORIAL_NEW_GOAL_ID,
-    title: TUTORIAL_NEW_GOAL_TITLE,
-    description: '教程示例目标：把刚录入的一批新作业放进同一个完成目标。',
+    title: tutorialNewGoalTitle(),
+    description: tr('tu.023'),
     priority: 3,
     desiredDate: shiftDate(anchorDate, 5),
     latestDate: shiftDate(anchorDate, 7),
@@ -465,20 +466,20 @@ function addCanonicalIntakeAssignments(state: AppState, anchorDate: string) {
 
   const definitions: Array<{ group: TaskGroup; tasks: Assignment[] }> = [
     {
-      group: group({ id: 'tutorial-added-math', subject: '数学', title: '数学卷子', priority: 3, quantity: 2, unitMinutes: 60 }, anchorDate),
-      tasks: [1, 2].map(index => assignment({ id: `tutorial-added-math-${index}`, groupId: 'tutorial-added-math', index, title: `数学卷子 ${String(index).padStart(2, '0')}`, estimatedMinutes: 60, scheduledDate: shiftDate(anchorDate, index) }, anchorDate)),
+      group: group({ id: 'tutorial-added-math', subject: '数学', title: tr('tu.024'), priority: 3, quantity: 2, unitMinutes: 60 }, anchorDate),
+      tasks: [1, 2].map(index => assignment({ id: `tutorial-added-math-${index}`, groupId: 'tutorial-added-math', index, title: tr('tu.025', { v: String(index).padStart(2, '0') }), estimatedMinutes: 60, scheduledDate: shiftDate(anchorDate, index) }, anchorDate)),
     },
     {
-      group: group({ id: 'tutorial-added-english', subject: '英语', title: '英语阅读', priority: 3, quantity: 3, unitMinutes: 30 }, anchorDate),
-      tasks: [1, 2, 3].map(index => assignment({ id: `tutorial-added-english-${index}`, groupId: 'tutorial-added-english', index, title: `英语阅读 ${String(index).padStart(2, '0')}`, estimatedMinutes: 30, scheduledDate: shiftDate(anchorDate, index + 2) }, anchorDate)),
+      group: group({ id: 'tutorial-added-english', subject: '英语', title: tr('tu.026'), priority: 3, quantity: 3, unitMinutes: 30 }, anchorDate),
+      tasks: [1, 2, 3].map(index => assignment({ id: `tutorial-added-english-${index}`, groupId: 'tutorial-added-english', index, title: tr('tu.027', { v: String(index).padStart(2, '0') }), estimatedMinutes: 30, scheduledDate: shiftDate(anchorDate, index + 2) }, anchorDate)),
     },
     {
-      group: group({ id: 'tutorial-added-report', subject: '语文', title: '读书报告', priority: 3, quantity: 1, unitMinutes: 90, hidden: true, hiddenStandalone: true }, anchorDate),
-      tasks: [assignment({ id: 'tutorial-added-report-1', groupId: 'tutorial-added-report', index: 1, title: '读书报告', estimatedMinutes: 90, scheduledDate: shiftDate(anchorDate, 5), standalone: true }, anchorDate)],
+      group: group({ id: 'tutorial-added-report', subject: '语文', title: tr('tu.028'), priority: 3, quantity: 1, unitMinutes: 90, hidden: true, hiddenStandalone: true }, anchorDate),
+      tasks: [assignment({ id: 'tutorial-added-report-1', groupId: 'tutorial-added-report', index: 1, title: tr('tu.028'), estimatedMinutes: 90, scheduledDate: shiftDate(anchorDate, 5), standalone: true }, anchorDate)],
     },
     {
-      group: group({ id: 'tutorial-added-physics', subject: '物理', title: '整理物理错题', priority: 3, quantity: 1, unitMinutes: 45, hidden: true, hiddenStandalone: true }, anchorDate),
-      tasks: [assignment({ id: 'tutorial-added-physics-1', groupId: 'tutorial-added-physics', index: 1, title: '整理物理错题', estimatedMinutes: 45, scheduledDate: shiftDate(anchorDate, 4), standalone: true }, anchorDate)],
+      group: group({ id: 'tutorial-added-physics', subject: '物理', title: tr('tu.029'), priority: 3, quantity: 1, unitMinutes: 45, hidden: true, hiddenStandalone: true }, anchorDate),
+      tasks: [assignment({ id: 'tutorial-added-physics-1', groupId: 'tutorial-added-physics', index: 1, title: tr('tu.029'), estimatedMinutes: 45, scheduledDate: shiftDate(anchorDate, 4), standalone: true }, anchorDate)],
     },
   ]
   state.taskGroups.push(...definitions.map(item => item.group))
@@ -491,8 +492,8 @@ function addCanonicalIntakeAssignments(state: AppState, anchorDate: string) {
   state.goals = state.goals.filter(item => item.id !== reportGoalId)
   state.goals.push({
     id: reportGoalId,
-    title: '读书报告完成目标',
-    description: '由录入批次“刚收到的新作业”创建。',
+    title: tr('tu.030'),
+    description: tr('tu.031'),
     priority: 3,
     latestDate: shiftDate(anchorDate, 7),
     status: 'active',
@@ -607,7 +608,7 @@ export function buildTutorialCheckpoint(step: TutorialStep, anchorDate: string):
 
 export function tutorialIssueCount(state: AppState, anchorDate: string) {
   const overdue = state.assignments.some(item => item.status !== 'done' && item.scheduledDate && item.scheduledDate < anchorDate)
-  const capacityDanger = analyzePlan(state, anchorDate).some(issue => issue.level === 'danger' && (issue.message.includes('容量') || issue.message.includes('超过') || issue.message.includes('超载')))
+  const capacityDanger = analyzePlan(state, anchorDate).some(issue => issue.level === 'danger' && (issue.message.includes(tr('tu.032')) || issue.message.includes(tr('tu.033')) || issue.message.includes(tr('tu.034'))))
   const goal = state.goals.find(item => item.id === TUTORIAL_GOAL_ID)
   const riskTask = state.assignments.find(item => item.id === 'tutorial-task-goal-risk')
   const goalRisk = Boolean(goal && riskTask?.scheduledDate && riskTask.scheduledDate > goal.latestDate)
@@ -651,7 +652,7 @@ function hasParsedTutorialIntake(state: AppState) {
 
 
 function hasTutorialNewGoal(state: AppState) {
-  return state.goals.some(goal => goal.id === TUTORIAL_NEW_GOAL_ID && goal.title === TUTORIAL_NEW_GOAL_TITLE && goal.status === 'active')
+  return state.goals.some(goal => goal.id === TUTORIAL_NEW_GOAL_ID && goal.title === tutorialNewGoalTitle() && goal.status === 'active')
 }
 
 function hasLinkedTutorialIntake(state: AppState) {
@@ -681,57 +682,57 @@ function hasReviewCarryCandidate(state: AppState, anchorDate: string) {
     .some(item => suggestMoveDates(state, item.id, 8).some(date => date > anchorDate))
 }
 
-export function tutorialStateHealth(state: AppState, session: TutorialSession) {
-  if (state.templateKind !== 'tutorial') return { ok: false as const, reason: '当前不是教程数据空间' }
-  if (todayISO() !== session.anchorDate) return { ok: false as const, reason: '教程时钟没有保持在进入时的日期' }
+export function tutorialStateHealth(state: AppState, session: TutorialSession, language: Language = 'zh') {
+  if (state.templateKind !== 'tutorial') return { ok: false as const, reason: translate(language, 'tutorial.health.notTutorialSpace') }
+  if (todayISO() !== session.anchorDate) return { ok: false as const, reason: translate(language, 'tutorial.health.clockDrifted') }
 
   const requiredIds = [TUTORIAL_GOAL_ID, TUTORIAL_EXECUTE_ASSIGNMENT_ID, TUTORIAL_PARTIAL_ASSIGNMENT_ID, TUTORIAL_UNFINISHED_ASSIGNMENT_ID, 'tutorial-task-locked', 'tutorial-task-done', 'tutorial-task-overdue', 'tutorial-task-goal-risk']
   const ids = new Set([...state.goals.map(item => item.id), ...state.assignments.map(item => item.id)])
   const missing = requiredIds.filter(id => !ids.has(id))
-  if (missing.length) return { ok: false as const, reason: `教程关键数据缺失：${missing.join(', ')}` }
+  if (missing.length) return { ok: false as const, reason: translate(language, 'tutorial.health.missingKeyData', { missing: missing.join(', ') }) }
 
   const anchor = session.anchorDate
   const locked = state.assignments.find(item => item.id === 'tutorial-task-locked')
   const historical = state.assignments.find(item => item.id === 'tutorial-task-done')
-  if (!locked?.locked || locked.status !== 'done' || locked.scheduledDate !== anchor) return { ok: false as const, reason: '教程锁定完成任务状态异常' }
-  if (historical?.status !== 'done' || historical.scheduledDate !== shiftDate(anchor, -2)) return { ok: false as const, reason: '教程历史完成记录异常' }
+  if (!locked?.locked || locked.status !== 'done' || locked.scheduledDate !== anchor) return { ok: false as const, reason: translate(language, 'tutorial.health.lockedTaskAbnormal') }
+  if (historical?.status !== 'done' || historical.scheduledDate !== shiftDate(anchor, -2)) return { ok: false as const, reason: translate(language, 'tutorial.health.historicalRecordAbnormal') }
 
   const initial = ['repair-entry', 'repair-action', 'repair-preview'].includes(session.step)
   if (initial) {
     const overdue = state.assignments.find(item => item.id === 'tutorial-task-overdue')
     const risk = state.assignments.find(item => item.id === 'tutorial-task-goal-risk')
-    if (overdue?.scheduledDate !== shiftDate(anchor, -1)) return { ok: false as const, reason: '教程逾期问题被意外改变' }
-    if (!risk?.scheduledDate || risk.scheduledDate <= shiftDate(anchor, 5)) return { ok: false as const, reason: '教程目标风险被意外改变' }
+    if (overdue?.scheduledDate !== shiftDate(anchor, -1)) return { ok: false as const, reason: translate(language, 'tutorial.health.overdueChanged') }
+    if (!risk?.scheduledDate || risk.scheduledDate <= shiftDate(anchor, 5)) return { ok: false as const, reason: translate(language, 'tutorial.health.goalRiskChanged') }
   } else {
     const overdue = state.assignments.find(item => item.id === 'tutorial-task-overdue')
-    if (!overdue?.scheduledDate || overdue.scheduledDate < anchor) return { ok: false as const, reason: '教程修复后的逾期任务仍在过去' }
+    if (!overdue?.scheduledDate || overdue.scheduledDate < anchor) return { ok: false as const, reason: translate(language, 'tutorial.health.overdueStillPast') }
   }
 
-  if (['intake-entry', 'intake-source', 'intake-parse'].includes(session.step) && !tutorialBatch(state)) return { ok: false as const, reason: '教程录入批次缺失' }
-  if (['tasks-intake', 'goal-create', 'goal-link', 'intake-schedule', 'intake-preview'].includes(session.step) && !hasParsedTutorialIntake(state)) return { ok: false as const, reason: '教程自然语言录入结果缺失' }
-  if (['goal-link', 'intake-schedule', 'intake-preview'].includes(session.step) && !hasTutorialNewGoal(state)) return { ok: false as const, reason: '教程新目标缺失' }
-  if (['intake-schedule', 'intake-preview'].includes(session.step) && !hasLinkedTutorialIntake(state)) return { ok: false as const, reason: '教程新任务尚未关联共同目标' }
+  if (['intake-entry', 'intake-source', 'intake-parse'].includes(session.step) && !tutorialBatch(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.intakeBatchMissing') }
+  if (['tasks-intake', 'goal-create', 'goal-link', 'intake-schedule', 'intake-preview'].includes(session.step) && !hasParsedTutorialIntake(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.parsedIntakeMissing') }
+  if (['goal-link', 'intake-schedule', 'intake-preview'].includes(session.step) && !hasTutorialNewGoal(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.newGoalMissing') }
+  if (['intake-schedule', 'intake-preview'].includes(session.step) && !hasLinkedTutorialIntake(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.intakeNotLinked') }
 
   if (['intake-calendar', 'execute-complete', 'execute-partial', 'review-entry', 'review-carry', 'review-preview', 'review-calendar', 'stats', 'stats-detail', 'future-entry', 'future-action', 'future-preview', 'future-calendar', 'stats-final', 'complete', 'free'].includes(session.step)) {
-    if (!hasAppliedTutorialIntake(state)) return { ok: false as const, reason: '教程新增任务 checkpoint 缺失或未应用' }
-    if (!hasAppliedTutorialGoal(state)) return { ok: false as const, reason: '教程共同目标没有随任务排期建立正式关联' }
+    if (!hasAppliedTutorialIntake(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.appliedIntakeMissing') }
+    if (!hasAppliedTutorialGoal(state)) return { ok: false as const, reason: translate(language, 'tutorial.health.appliedGoalNotLinked') }
   }
 
   if (['execute-partial', 'review-entry', 'review-carry', 'review-preview', 'review-calendar', 'stats', 'stats-detail', 'future-entry', 'future-action', 'future-preview', 'future-calendar', 'stats-final', 'complete', 'free'].includes(session.step)) {
     const executed = state.assignments.find(item => item.id === TUTORIAL_EXECUTE_ASSIGNMENT_ID)
-    if (executed?.status !== 'done' || executed.actualMinutes < 1 || executed.actualMinutes > 65 || executed.timeEntries.length === 0) return { ok: false as const, reason: '教程完整完成任务 checkpoint 异常' }
+    if (executed?.status !== 'done' || executed.actualMinutes < 1 || executed.actualMinutes > 65 || executed.timeEntries.length === 0) return { ok: false as const, reason: translate(language, 'tutorial.health.executeCheckpointAbnormal') }
   }
 
   if (['review-entry', 'review-carry', 'review-preview', 'review-calendar', 'stats', 'stats-detail', 'future-entry', 'future-action', 'future-preview', 'future-calendar', 'stats-final', 'complete', 'free'].includes(session.step)) {
     const partial = state.assignments.find(item => item.id === TUTORIAL_PARTIAL_ASSIGNMENT_ID)
-    if (partial?.status !== 'partial' || partial.progress <= 0 || partial.progress >= 100 || partial.actualMinutes <= 0) return { ok: false as const, reason: '教程部分完成任务 checkpoint 异常' }
+    if (partial?.status !== 'partial' || partial.progress <= 0 || partial.progress >= 100 || partial.actualMinutes <= 0) return { ok: false as const, reason: translate(language, 'tutorial.health.partialCheckpointAbnormal') }
   }
 
-  if (['review-entry', 'review-carry', 'review-preview'].includes(session.step) && !hasReviewCarryCandidate(state, anchor)) return { ok: false as const, reason: '教程复盘没有可顺延的未完成任务' }
+  if (['review-entry', 'review-carry', 'review-preview'].includes(session.step) && !hasReviewCarryCandidate(state, anchor)) return { ok: false as const, reason: translate(language, 'tutorial.health.noCarryCandidate') }
 
   if (['review-calendar', 'stats', 'stats-detail', 'future-entry', 'future-action', 'future-preview', 'future-calendar', 'stats-final', 'complete', 'free'].includes(session.step)) {
-    if (!state.reviewRecords.some(item => item.date === anchor)) return { ok: false as const, reason: '教程复盘 checkpoint 缺失' }
-    if (state.assignments.some(item => item.scheduledDate === anchor && item.status !== 'done' && !item.locked)) return { ok: false as const, reason: '教程复盘后的未完成任务仍留在当天' }
+    if (!state.reviewRecords.some(item => item.date === anchor)) return { ok: false as const, reason: translate(language, 'tutorial.health.reviewCheckpointMissing') }
+    if (state.assignments.some(item => item.scheduledDate === anchor && item.status !== 'done' && !item.locked)) return { ok: false as const, reason: translate(language, 'tutorial.health.unfinishedStillToday') }
   }
 
   return { ok: true as const }

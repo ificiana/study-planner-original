@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { LogOut, RotateCcw, X } from 'lucide-react'
 import type { TutorialStep } from '../lib/tutorial'
+import { useT, variantsOfZh } from '../lib/i18n'
+import type { Primitive } from '../lib/i18n/types'
 import '../tutorial-polish.css'
+
+type Translate = (key: string, vars?: Record<string, Primitive>) => string
 
 export interface TutorialCoachmarkConfig {
   target?: string
@@ -15,35 +19,37 @@ export interface TutorialCoachmarkConfig {
   onSecondary?: () => void
 }
 
-const tutorialCopyOverrides: Partial<Record<TutorialStep, string>> = {
-  'repair-entry': '当前计划有 3 个问题：今天超载、任务逾期、目标有无法完成风险。点“3 个问题需处理”，打开重排中心，查看这 3 个问题分别影响了什么。',
-  'repair-action': '点“修复当前问题”，系统会只针对这些已经发生的问题计算修复方案；已完成和锁定任务不会被移动。',
-  'repair-calendar': '高亮日期就是刚才实际改动的位置。已完成和锁定内容没有被打乱。',
-  'goal-existing': '点“查看”，打开目标详情，查看截止日期、当前进度、预计完成和关联任务；看完点“关闭”，教程会继续到录入。',
-  'intake-entry': '点“自然语言 / 粘贴清单”，打开自然语言录入框，教程示例文本会自动填入。',
-  'intake-source': '点“解析并预览”，系统会把文本拆成可检查的任务、数量、时长和期限。',
-  'intake-parse': '确认识别结果后，点“加入当前批次”，这些任务会进入待排期区，但还不会进入日历。',
-  'intake-schedule': '点“生成排期预览”，系统会根据容量、期限和现有计划计算安排；此时仍不会修改日历。',
-  'intake-preview': '点“应用预览中的改动”，确认后新任务才会进入正式计划，并自动打开月历展示落点。',
-  'intake-calendar': '新任务已经进入正式计划。高亮日期就是这次新增或调整的位置。',
-  'execute-complete': '点高亮任务并选择“完成”，记录 52 分钟实际用时；保存后这次执行会进入复盘和统计。',
-  'execute-partial': '点第二个高亮任务并选择“部分完成”，记录 12 分钟、50%；保存后复盘会把它识别为部分完成。',
-  'review-entry': '点“结束今天并复盘”，打开今天的真实执行汇总，查看完成、部分完成和未完成任务。',
-  'review-carry': '选好顺延日期后，点“完成复盘，并按当前方案顺延”，系统会生成顺延预览，不会直接移动任务。',
-  'review-preview': '点“应用预览中的改动”，未完成任务会按预览顺延，并自动打开月历展示新日期。',
-  'review-calendar': '未完成任务已经接到后面的日期，今天的执行记录仍然保留。',
-  stats: '点“查看连续记录和学习热力图”，展开实际学习时间、连续记录和近期趋势。',
-  'stats-detail': '这里记录的是实际执行结果：学了多久、完成多少、计划和实际差多少。',
-  'future-entry': '点“计划有变化”，重新打开重排中心；这次不是修复故障，而是主动调整未来节奏。',
-  'future-action': '选择一个偏好后，点“生成重新安排预览”，系统会按这个取舍重新计算未来任务；当前计划不会立刻改变。',
-  'future-preview': '点“应用预览中的改动”，确认后未来安排才会生效，并自动打开月历展示结果。',
-  'future-calendar': '主动重排已经生效。这次不是救火，而是主动重新规划后面的节奏。',
-  complete: '你已经走完：发现问题 → 修复 → 录入 → 排期 → 执行 → 复盘 → 再调整。',
+function tutorialCopyOverrides(t: Translate): Partial<Record<TutorialStep, string>> {
+  return {
+    'repair-entry': t('tutorialCoachmark.step.repairEntry'),
+    'repair-action': t('tutorialCoachmark.step.repairAction'),
+    'repair-calendar': t('tutorialCoachmark.step.repairCalendar'),
+    'goal-existing': t('tutorialCoachmark.step.goalExisting'),
+    'intake-entry': t('tutorialCoachmark.step.intakeEntry'),
+    'intake-source': t('tutorialCoachmark.step.intakeSource'),
+    'intake-parse': t('tutorialCoachmark.step.intakeParse'),
+    'intake-schedule': t('tutorialCoachmark.step.intakeSchedule'),
+    'intake-preview': t('tutorialCoachmark.step.intakePreview'),
+    'intake-calendar': t('tutorialCoachmark.step.intakeCalendar'),
+    'execute-complete': t('tutorialCoachmark.step.executeComplete'),
+    'execute-partial': t('tutorialCoachmark.step.executePartial'),
+    'review-entry': t('tutorialCoachmark.step.reviewEntry'),
+    'review-carry': t('tutorialCoachmark.step.reviewCarry'),
+    'review-preview': t('tutorialCoachmark.step.reviewPreview'),
+    'review-calendar': t('tutorialCoachmark.step.reviewCalendar'),
+    stats: t('tutorialCoachmark.step.stats'),
+    'stats-detail': t('tutorialCoachmark.step.statsDetail'),
+    'future-entry': t('tutorialCoachmark.step.futureEntry'),
+    'future-action': t('tutorialCoachmark.step.futureAction'),
+    'future-preview': t('tutorialCoachmark.step.futurePreview'),
+    'future-calendar': t('tutorialCoachmark.step.futureCalendar'),
+    complete: t('tutorialCoachmark.step.complete'),
+  }
 }
 
 function proposalMovesTarget() {
   const buttons = Array.from(document.querySelectorAll<HTMLElement>('.proposal-summary-grid button'))
-  return buttons.find(element => element.textContent?.includes('移动任务') && element.getBoundingClientRect().width > 0)
+  return buttons.find(element => variantsOfZh('移动任务').some(label => element.textContent?.includes(label)) && element.getBoundingClientRect().width > 0)
 }
 
 function findTarget(target?: string) {
@@ -65,7 +71,7 @@ function findTarget(target?: string) {
 }
 
 function isProposalMovesTarget(element?: HTMLElement) {
-  return Boolean(element?.closest('.proposal-summary-grid') && element.textContent?.includes('移动任务'))
+  return Boolean(element?.closest('.proposal-summary-grid') && variantsOfZh('移动任务').some(label => element.textContent?.includes(label)))
 }
 
 function renderEmphasized(text: string): ReactNode[] {
@@ -94,6 +100,7 @@ export function TutorialCoachmark({ step, config, onRestart, onExit }: {
   onRestart: () => void
   onExit: () => void
 }) {
+  const t = useT()
   const [collapsed, setCollapsed] = useState(false)
   const [portalPlacement, setPortalPlacement] = useState<PortalPlacement | null>(null)
   const [repairMovesInspected, setRepairMovesInspected] = useState(false)
@@ -110,12 +117,12 @@ export function TutorialCoachmark({ step, config, onRestart, onExit }: {
         ...config,
         target: repairMovesInspected ? 'proposal-primary' : 'proposal-moves|proposal-primary',
         text: repairMovesInspected
-          ? '任务变化已经展开。点“应用预览中的改动”，确认后系统才会修改计划，并自动打开月历展示结果。'
-          : '先看哪些任务会移动。点“移动任务”，展开每项任务调整前后的日期和移动原因。',
+          ? t('tutorialCoachmark.step.repairPreviewAfter')
+          : t('tutorialCoachmark.step.repairPreviewBefore'),
       }
     }
-    return { ...config, text: tutorialCopyOverrides[step] ?? config.text }
-  }, [config, repairMovesInspected, step])
+    return { ...config, text: tutorialCopyOverrides(t)[step] ?? config.text }
+  }, [config, repairMovesInspected, step, t])
 
   useEffect(() => {
     let target: HTMLElement | undefined
@@ -211,16 +218,16 @@ export function TutorialCoachmark({ step, config, onRestart, onExit }: {
 
   const content = collapsed ? (
     <div className="tutorial-coachmark-collapsed">
-      <button className="primary-button" onClick={() => setCollapsed(false)}>重新打开提示</button>
-      <button className="text-button" onClick={onExit}>退出教程</button>
+      <button className="primary-button" onClick={() => setCollapsed(false)}>{t('tutorialCoachmark.reopen')}</button>
+      <button className="text-button" onClick={onExit}>{t('tutorialCoachmark.exit')}</button>
     </div>
   ) : (
     <div className="tutorial-coachmark" role="status" aria-live="polite">
       <div className="tutorial-coachmark-head">
-        <span>{effectiveConfig.eyebrow ?? '互动教程'}</span>
+        <span>{effectiveConfig.eyebrow ?? t('tutorialCoachmark.eyebrow')}</span>
         <div>
-          <button className="tutorial-icon-button" onClick={onRestart} title="从头开始" aria-label="从头开始"><RotateCcw size={14}/></button>
-          <button className="tutorial-icon-button" onClick={() => setCollapsed(true)} title="收起提示" aria-label="收起提示"><X size={15}/></button>
+          <button className="tutorial-icon-button" onClick={onRestart} title={t('tutorialCoachmark.restartTitle')} aria-label={t('tutorialCoachmark.restartTitle')}><RotateCcw size={14}/></button>
+          <button className="tutorial-icon-button" onClick={() => setCollapsed(true)} title={t('tutorialCoachmark.collapseTitle')} aria-label={t('tutorialCoachmark.collapseTitle')}><X size={15}/></button>
         </div>
       </div>
       <div className="tutorial-coachmark-copy">
@@ -232,7 +239,7 @@ export function TutorialCoachmark({ step, config, onRestart, onExit }: {
         {effectiveConfig.actionLabel && <button className="primary-button" onClick={effectiveConfig.onAction}>{effectiveConfig.actionLabel}</button>}
       </div>}
       <div className="tutorial-coachmark-footer">
-        <button className="tutorial-exit-button" onClick={onExit}><LogOut size={13}/>退出教程</button>
+        <button className="tutorial-exit-button" onClick={onExit}><LogOut size={13}/>{t('tutorialCoachmark.exit')}</button>
       </div>
     </div>
   )

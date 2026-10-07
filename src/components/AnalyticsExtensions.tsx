@@ -1,3 +1,4 @@
+import { variantsOfZh, zhHeading } from '../lib/i18n'
 import { useEffect, useRef } from 'react'
 import { useApp } from '../AppContext'
 import { visitorId } from '../lib/analytics'
@@ -53,7 +54,7 @@ function currentAppPage() {
     今日: 'today', 月历: 'calendar', 任务: 'tasks', 录入: 'intake', 目标: 'goals',
     统计: 'stats', 导出: 'export', 意见反馈: 'feedback', 使用教程: 'guide', 设置: 'settings',
   }
-  return map[heading]
+  return map[zhHeading(heading)]
 }
 
 async function token() {
@@ -178,7 +179,7 @@ export function AnalyticsExtensions() {
 
       const button = target?.closest('button')
       const label = button?.textContent?.trim() ?? ''
-      if (button?.closest('.tutorial-coachmark') && label === '开始我的计划') {
+      if (button?.closest('.tutorial-coachmark') && variantsOfZh('开始我的计划').includes(label)) {
         void recordMetric('tutorial_completed', { source: 'interactive_tutorial' })
         window.setTimeout(() => {
           if (document.querySelector('.pwa-guide-modal-backdrop')) {

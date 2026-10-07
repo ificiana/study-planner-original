@@ -1,27 +1,32 @@
 import { useEffect, useState } from 'react'
 import { FEEDBACK_UNREAD_EVENT, getUnreadFeedbackReplyCount } from '../lib/feedback'
 import { supabase } from '../lib/supabase'
+import { useT, variantsOfZh } from '../lib/i18n'
+import type { Primitive } from '../lib/i18n/types'
+
+type Translate = (key: string, vars?: Record<string, Primitive>) => string
 
 const REFRESH_INTERVAL_MS = 120_000
 
 function feedbackNavButton(): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll<HTMLButtonElement>('.sidebar nav button'))
-    .find(button => button.querySelector('span')?.textContent?.trim() === '意见反馈')
+    .find(button => button.querySelector('span')?.textContent?.trim() !== undefined && variantsOfZh('意见反馈').includes(button.querySelector('span')?.textContent?.trim() ?? ''))
 }
 
-function renderFeedbackBadge(unreadCount: number) {
+function renderFeedbackBadge(unreadCount: number, t: Translate) {
   const button = feedbackNavButton()
   if (!button) return
 
   const existing = button.querySelector<HTMLElement>('.feedback-nav-badge')
+  const baseLabel = t('feedback.navLabel')
   if (unreadCount <= 0) {
     if (existing) existing.remove()
-    if (button.getAttribute('aria-label') !== '意见反馈') button.setAttribute('aria-label', '意见反馈')
+    if (button.getAttribute('aria-label') !== baseLabel) button.setAttribute('aria-label', baseLabel)
     return
   }
 
   const badgeText = unreadCount > 99 ? '99+' : String(unreadCount)
-  const ariaLabel = `意见反馈，${unreadCount} 条新回复`
+  const ariaLabel = t('feedback.navLabelUnread', { count: unreadCount })
   if (!existing) {
     const badge = document.createElement('em')
     badge.className = 'intake-nav-badge feedback-nav-badge'
@@ -39,6 +44,7 @@ function renderFeedbackBadge(unreadCount: number) {
 }
 
 export function FeedbackNotificationObserver() {
+  const t = useT()
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
@@ -97,7 +103,7 @@ export function FeedbackNotificationObserver() {
       if (frame) window.cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
         frame = 0
-        renderFeedbackBadge(unreadCount)
+        renderFeedbackBadge(unreadCount, t)
       })
     }
 
@@ -106,7 +112,7 @@ export function FeedbackNotificationObserver() {
     const attachObserver = (): MutationObserver | undefined => {
       const nav = document.querySelector('.sidebar nav')
       if (!nav) return undefined
-      renderFeedbackBadge(unreadCount)
+      renderFeedbackBadge(unreadCount, t)
       const observer = new MutationObserver(sync)
       observer.observe(nav, { childList: true, subtree: true })
       return observer
@@ -126,7 +132,7 @@ export function FeedbackNotificationObserver() {
       const badge = feedbackNavButton()?.querySelector('.feedback-nav-badge')
       badge?.remove()
     }
-  }, [unreadCount])
+  }, [unreadCount, t])
 
   return null
 }

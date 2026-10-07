@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
 import type { AppState } from '../types'
 import { portableState } from './state'
@@ -16,7 +17,7 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function signIn(email: string, password: string) {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     if (/confirm|verified|验证|确认/i.test(error.message)) rememberPendingSignup(email)
@@ -26,7 +27,7 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string) {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   void recordAnalyticsEvent('signup_started', { metadata: { emailDomain: email.trim().toLowerCase().split('@')[1] } })
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) throw error
@@ -38,7 +39,7 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function resendSignupConfirmation(email: string) {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   const { error } = await supabase.auth.resend({ type: 'signup', email })
   if (error) throw error
 }
@@ -52,10 +53,10 @@ export async function signOut() {
 export type FeedbackType = 'bug' | 'suggestion' | 'experience' | 'other'
 
 export async function submitFeedback(input: { type: FeedbackType; content: string }) {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+  if (!supabase) throw new Error(tr('sb.002'))
   const content = input.content.trim()
-  if (!content) throw new Error('请填写反馈内容。')
-  if (content.length > 4000) throw new Error('反馈内容不能超过 4000 个字符。')
+  if (!content) throw new Error(tr('sb.003'))
+  if (content.length > 4000) throw new Error(tr('sb.004'))
   const session = await getSession()
   const { error } = await supabase.from('feedback_submissions').insert({
     feedback_type: input.type,
@@ -63,7 +64,7 @@ export async function submitFeedback(input: { type: FeedbackType; content: strin
     user_id: session?.user.id ?? null,
     visitor_id: typeof window === 'undefined' ? null : visitorId(),
   })
-  if (error) throw new Error('反馈提交失败，请稍后重试。')
+  if (error) throw new Error(tr('sb.005'))
 }
 
 /**
@@ -77,7 +78,7 @@ export function preparePortableState(state: AppState) {
 
 export class CloudRevisionConflictError extends Error {
   constructor(public expectedRevision: number) {
-    super('云端计划已被另一台设备更新。当前修改已保留在本机，请先比较冲突版本。')
+    super(tr('sb.006'))
     this.name = 'CloudRevisionConflictError'
   }
 }
@@ -105,7 +106,7 @@ export function isMissingCloudRevisionColumn(error: unknown): boolean {
 async function resolveUserId(userId?: string): Promise<string> {
   if (userId) return userId
   const session = await getSession()
-  if (!session) throw new Error('请先登录')
+  if (!session) throw new Error(tr('sb.007'))
   return session.user.id
 }
 
@@ -131,7 +132,7 @@ function normalizeLegacyCloudSnapshot(raw: unknown): unknown {
 
 function validateCloudSnapshot(raw: unknown, revision: unknown): CloudSnapshot {
   const validation = validateStateInput(normalizeLegacyCloudSnapshot(raw), 'cloud')
-  if (!validation.success || !validation.data) throw new Error(`云端快照结构无效：${validation.issues.slice(0, 3).join('；')}`)
+  if (!validation.success || !validation.data) throw new Error(tr('sb.008', { v: validation.issues.slice(0, 3).join('；') }))
   return { state: validation.data, revision: Math.max(1, Number(revision) || 1) }
 }
 
@@ -142,7 +143,7 @@ async function uploadLegacySnapshot(
   now: string,
   expectedRevision?: number,
 ): Promise<{ savedAt: string; revision: number }> {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   const { error } = await supabase.from('study_snapshots').upsert({
     user_id: resolvedUserId,
     data: payload,
@@ -154,7 +155,7 @@ async function uploadLegacySnapshot(
 }
 
 export async function uploadSnapshot(state: AppState, userId?: string, expectedRevision?: number): Promise<{ savedAt: string; revision: number }> {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   const resolvedUserId = await resolveUserId(userId)
   const now = new Date().toISOString()
   const portable = preparePortableState(state)
@@ -183,7 +184,7 @@ export async function uploadSnapshot(state: AppState, userId?: string, expectedR
 }
 
 export async function downloadSnapshot(userId?: string): Promise<CloudSnapshot | undefined> {
-  if (!supabase) throw new Error('Supabase 尚未配置')
+  if (!supabase) throw new Error(tr('sb.001'))
   const resolvedUserId = await resolveUserId(userId)
   const current = await supabase.from('study_snapshots').select('data, revision').eq('user_id', resolvedUserId).maybeSingle()
   if (current.error) {

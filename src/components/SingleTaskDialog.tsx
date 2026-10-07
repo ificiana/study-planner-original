@@ -3,15 +3,9 @@ import type { AppState, NewTaskDraft, Priority, SchedulingIntent, Subject } from
 import { Modal } from './Modal'
 import { NumericInput } from './NumericInput'
 import type { TaskCreationMode } from './AddTaskDialog'
+import { useT } from '../lib/i18n'
 
 const presetSubjects: Subject[] = ['语文', '数学', '英语', '物理', '化学', '生物', '其他']
-const priorities: Array<{ value: Priority; label: string }> = [
-  { value: 5, label: '核心' },
-  { value: 3, label: '高' },
-  { value: 2, label: '中' },
-  { value: 1, label: '低' },
-  { value: 0, label: '可选' },
-]
 
 export function SingleTaskDialog({ open, state, defaultDate, defaultIntent, initial, creationMode = 'schedule', onClose, onSubmit }: {
   open: boolean
@@ -23,6 +17,14 @@ export function SingleTaskDialog({ open, state, defaultDate, defaultIntent, init
   onClose: () => void
   onSubmit: (draft: NewTaskDraft, schedule: boolean) => void
 }) {
+  const t = useT()
+  const priorities: Array<{ value: Priority; label: string }> = [
+    { value: 5, label: t('priority.core') },
+    { value: 3, label: t('priority.high') },
+    { value: 2, label: t('priority.medium') },
+    { value: 1, label: t('priority.low') },
+    { value: 0, label: t('priority.optional') },
+  ]
   const subjects = useMemo(() => Array.from(new Set([...presetSubjects, ...state.settings.customSubjects, ...state.taskGroups.map(group => group.subject)])), [state.settings.customSubjects, state.taskGroups])
   const [title, setTitle] = useState('')
   const [subject, setSubject] = useState<Subject>('其他')
@@ -63,31 +65,31 @@ export function SingleTaskDialog({ open, state, defaultDate, defaultIntent, init
   }
 
   const modalTitle = initial
-    ? '编辑独立任务'
+    ? t('singleTaskDialog.titleEdit')
     : schedule
-      ? '添加独立任务并安排'
-      : '添加独立任务到录入'
+      ? t('singleTaskDialog.titleAddSchedule')
+      : t('singleTaskDialog.titleAddIntake')
 
   return <Modal open={open} title={modalTitle} onClose={onClose} wide mobileFullscreen>
     <div className="form-grid">
-      <label className="field span-2"><span>任务标题</span><input autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder="例如：今晚看完第三章" /></label>
-      <label className="field"><span>科目／类别</span><select value={subject} onChange={event => { setSubject(event.target.value); setCustomSubject('') }}>{subjects.map(item => <option key={item}>{item}</option>)}</select></label>
-      <label className="field"><span>自定义类别（可选）</span><input value={customSubject} onChange={event => setCustomSubject(event.target.value)} placeholder="例如：竞赛研究" /></label>
-      <label className="field"><span>优先级</span><select value={priority} onChange={event => setPriority(Number(event.target.value) as Priority)}>{priorities.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-      <label className="field"><span>预计时长（分钟）</span><NumericInput min={1} max={1440} value={minutes} onValueChange={setMinutes} /></label>
+      <label className="field span-2"><span>{t('singleTaskDialog.taskTitleLabel')}</span><input autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder={t('singleTaskDialog.taskTitlePlaceholder')} /></label>
+      <label className="field"><span>{t('singleTaskDialog.subjectLabel')}</span><select value={subject} onChange={event => { setSubject(event.target.value); setCustomSubject('') }}>{subjects.map(item => <option key={item}>{item}</option>)}</select></label>
+      <label className="field"><span>{t('singleTaskDialog.customSubjectLabel')}</span><input value={customSubject} onChange={event => setCustomSubject(event.target.value)} placeholder={t('singleTaskDialog.customSubjectPlaceholder')} /></label>
+      <label className="field"><span>{t('singleTaskDialog.priorityLabel')}</span><select value={priority} onChange={event => setPriority(Number(event.target.value) as Priority)}>{priorities.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+      <label className="field"><span>{t('singleTaskDialog.minutesLabel')}</span><NumericInput min={1} max={1440} value={minutes} onValueChange={setMinutes} /></label>
       {schedule && <>
-        <label className="field"><span>排期方式</span><select value={intent} onChange={event => setIntent(event.target.value as SchedulingIntent)}>
-          <option value="system">由系统安排</option>
-          <option value="prefer-date">优先安排到指定日期</option>
-          <option value="lock-date">锁定在指定日期</option>
+        <label className="field"><span>{t('singleTaskDialog.intentLabel')}</span><select value={intent} onChange={event => setIntent(event.target.value as SchedulingIntent)}>
+          <option value="system">{t('singleTaskDialog.intentSystem')}</option>
+          <option value="prefer-date">{t('singleTaskDialog.intentPreferDate')}</option>
+          <option value="lock-date">{t('singleTaskDialog.intentLockDate')}</option>
         </select></label>
-        {intent !== 'system' && <label className="field"><span>指定日期</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={date} onChange={event => setDate(event.target.value)} /></label>}
+        {intent !== 'system' && <label className="field"><span>{t('singleTaskDialog.dateLabel')}</span><input type="date" min={state.settings.startDate} max={state.settings.endDate} value={date} onChange={event => setDate(event.target.value)} /></label>}
       </>}
-      <label className="field span-2"><span>备注（可选）</span><textarea rows={3} value={notes} onChange={event => setNotes(event.target.value)} /></label>
+      <label className="field span-2"><span>{t('singleTaskDialog.notesLabel')}</span><textarea rows={3} value={notes} onChange={event => setNotes(event.target.value)} /></label>
       <div className="form-note span-2">{schedule
-        ? '提交后会先生成安排预览，确认后才加入正式计划。'
-        : '保存后只会加入“录入”，不会进入日历或改变当前计划。'}</div>
+        ? t('singleTaskDialog.noteSchedule')
+        : t('singleTaskDialog.noteIntake')}</div>
     </div>
-    <div className="modal-actions"><button className="secondary-button" onClick={onClose}>取消</button><button className="primary-button" disabled={!title.trim() || (schedule && intent !== 'system' && !date)} onClick={submit}>{schedule ? '生成安排预览' : initial ? '保存修改' : '保存到录入'}</button></div>
+    <div className="modal-actions"><button className="secondary-button" onClick={onClose}>{t('common.cancel')}</button><button className="primary-button" disabled={!title.trim() || (schedule && intent !== 'system' && !date)} onClick={submit}>{schedule ? t('singleTaskDialog.submitSchedule') : initial ? t('singleTaskDialog.submitEditSave') : t('singleTaskDialog.submitSaveIntake')}</button></div>
   </Modal>
 }

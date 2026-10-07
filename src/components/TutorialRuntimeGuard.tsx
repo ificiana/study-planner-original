@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useApp } from '../AppContext'
+import { useT } from '../lib/i18n'
 import type { AppState } from '../types'
 import {
   TUTORIAL_INTAKE_BATCH_ID,
   TUTORIAL_NAMESPACE,
   TUTORIAL_NEW_GOAL_ID,
-  TUTORIAL_NEW_GOAL_TITLE,
+  tutorialNewGoalTitle,
   readTutorialSession,
   type TutorialStep,
 } from '../lib/tutorial'
@@ -50,7 +51,7 @@ function restoreGoalOptions() {
   document.querySelectorAll('.tutorial-goal-only-note').forEach(node => node.remove())
 }
 
-function enforceOnlyTutorialGoal() {
+function enforceOnlyTutorialGoal(t: (key: string, vars?: Record<string, string | number>) => string) {
   const session = readTutorialSession()
   if (session?.step !== 'goal-link') {
     restoreGoalOptions()
@@ -61,7 +62,7 @@ function enforceOnlyTutorialGoal() {
   fields.forEach(field => {
     const labels = Array.from(field.querySelectorAll<HTMLLabelElement>('label'))
     labels.forEach(label => {
-      const allowed = label.textContent?.includes(TUTORIAL_NEW_GOAL_TITLE) === true
+      const allowed = label.textContent?.includes(tutorialNewGoalTitle()) === true
       if (allowed) return
       label.hidden = true
       label.dataset.tutorialGoalOptionGuard = '1'
@@ -72,7 +73,7 @@ function enforceOnlyTutorialGoal() {
     if (!field.querySelector('.tutorial-goal-only-note')) {
       const note = document.createElement('small')
       note.className = 'tutorial-goal-only-note'
-      note.textContent = `教程中只需要关联刚创建的“${TUTORIAL_NEW_GOAL_TITLE}”目标。`
+      note.textContent = t('tutorialRuntimeGuard.onlyGoalNote', { goalTitle: tutorialNewGoalTitle() })
       const legend = field.querySelector('legend')
       if (legend?.nextSibling) field.insertBefore(note, legend.nextSibling)
       else field.appendChild(note)
@@ -86,6 +87,7 @@ type PendingScheduleRetry = {
 }
 
 export function TutorialRuntimeGuard() {
+  const t = useT()
   const { state, namespace, setDataSpace } = useApp()
   const stateRef = useRef(state)
   const repairInFlight = useRef(false)
@@ -129,7 +131,7 @@ export function TutorialRuntimeGuard() {
         pendingScheduleRetry.current = { button, wasDisabled: button.disabled }
         button.disabled = true
         button.setAttribute('aria-busy', 'true')
-        button.title = '正在同步刚才的目标关联…'
+        button.title = t('tutorialRuntimeGuard.syncingGoalLink')
       }
       if (repairInFlight.current) return
       repairInFlight.current = true
@@ -139,7 +141,7 @@ export function TutorialRuntimeGuard() {
 
     document.addEventListener('click', guardScheduleClick, true)
     return () => document.removeEventListener('click', guardScheduleClick, true)
-  }, [namespace, setDataSpace])
+  }, [namespace, setDataSpace, t])
 
   useEffect(() => {
     const pending = pendingScheduleRetry.current
@@ -171,7 +173,7 @@ export function TutorialRuntimeGuard() {
       if (frame !== undefined) window.cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
         frame = undefined
-        enforceOnlyTutorialGoal()
+        enforceOnlyTutorialGoal(t)
         ensureGoalLinkReady()
       })
     }
@@ -186,7 +188,7 @@ export function TutorialRuntimeGuard() {
       document.removeEventListener('focusin', schedule, true)
       restoreGoalOptions()
     }
-  }, [namespace, state.updatedAt])
+  }, [namespace, state.updatedAt, t])
 
   return null
 }

@@ -7,8 +7,9 @@ import type {
   AppState, Assignment, DayType, ReplanAudit, ReplanBundle, ReplanRequest,
   ReplanResult, ReplanStrategy, Subject
 } from '../types'
-import { dateRange, dayTypeLabel, fmtDate, fmtWeekday, getCapacity, minutesText } from '../lib/date'
+import { dateRange, fmtDate, fmtWeekday, getCapacity, minutesText } from '../lib/date'
 import { analyzePlan, effectiveMinutes, planningDayLoad } from '../lib/planner'
+import { useT } from '../lib/i18n'
 import { Drawer } from './Drawer'
 import { Modal } from './Modal'
 import { NumericInput } from './NumericInput'
@@ -97,6 +98,7 @@ function DayDiffPanel({
   onDragStart: (assignmentId: string, event: React.DragEvent) => void
   compact?: boolean
 }) {
+  const t = useT()
   const allRows = useMemo(() => buildDayDiff(beforeState, afterState, date), [beforeState, afterState, date])
   const rows = onlyChanges ? allRows.filter(row => row.kind !== 'same') : allRows
   const nativeDragEnabled = nativeTaskDragAvailable()
@@ -115,18 +117,18 @@ function DayDiffPanel({
         <div><strong>{assignment.title}</strong><span>{subject} · {minutesText(assignment.estimatedMinutes)}</span></div>
       </div>
       <div className="diff-task-meta">
-        {row.kind === 'added' && side === 'after' && <em>＋新增{row.sourceDate ? ` · 来自 ${row.sourceDate}` : ''}</em>}
-        {row.kind === 'removed' && side === 'before' && <em>－移除{row.destinationDate ? ` · 移至 ${row.destinationDate}` : ''}</em>}
-        {row.kind === 'modified' && <em>≈ 信息变化</em>}
-        {assignment.locked && <span><Lock size={12}/>已锁定</span>}
-        {assignment.intentStrength === 'manual' && <span>用户手动</span>}
+        {row.kind === 'added' && side === 'after' && <em>{row.sourceDate ? t('replanDialog.addedFrom', { date: row.sourceDate }) : t('replanDialog.added')}</em>}
+        {row.kind === 'removed' && side === 'before' && <em>{row.destinationDate ? t('replanDialog.removedTo', { date: row.destinationDate }) : t('replanDialog.removed')}</em>}
+        {row.kind === 'modified' && <em>{t('replanDialog.modified')}</em>}
+        {assignment.locked && <span><Lock size={12}/>{t('replanDialog.locked')}</span>}
+        {assignment.intentStrength === 'manual' && <span>{t('replanDialog.manualIntent')}</span>}
       </div>
     </div>
   }
 
   return <div className={`day-diff-panel ${compact ? 'day-diff-compact' : ''}`}>
-    <div className="day-diff-heading"><span>修改前</span><span>修改后</span></div>
-    {rows.length === 0 && <p className="muted-text">当前筛选下没有变化。</p>}
+    <div className="day-diff-heading"><span>{t('replanDialog.before')}</span><span>{t('replanDialog.after')}</span></div>
+    {rows.length === 0 && <p className="muted-text">{t('replanDialog.noChangesInFilter')}</p>}
     {rows.map(row => {
       const assignment = row.after ?? row.before
       if (!assignment) return null
@@ -137,18 +139,18 @@ function DayDiffPanel({
         <div>{taskView(row.before, 'before', row)}</div>
         <div>{taskView(row.after, 'after', row)}</div>
         {changed && <div className="diff-row-actions">
-          {move && <div className="diff-reason-block"><div className="diff-reason"><span>{move.reason}</span>{move.impact && <span className="diff-impact">{move.impact}</span>}</div>{move.rejectedAlternatives && move.rejectedAlternatives.length > 0 && <details><summary>为什么没有选其他日期</summary>{move.rejectedAlternatives.map(item => <div key={`${move.assignmentId}-${item.date}`}><strong>{item.date}</strong><span>{item.reasons.join('；')}</span></div>)}</details>}</div>}
-          <button className={decision.mode === 'accept' ? 'choice-active' : ''} onClick={() => onDecision(assignment.id, { ...decision, mode: 'accept', date: undefined, previewFixed: true })}>接受</button>
-          <button className={decision.mode === 'keep' ? 'choice-active' : ''} onClick={() => onDecision(assignment.id, { ...decision, mode: 'keep', date: undefined, previewFixed: true })}>保留原日</button>
-          <label className="inline-date-choice"><span>改到</span><input
+          {move && <div className="diff-reason-block"><div className="diff-reason"><span>{move.reason}</span>{move.impact && <span className="diff-impact">{move.impact}</span>}</div>{move.rejectedAlternatives && move.rejectedAlternatives.length > 0 && <details><summary>{t('replanDialog.rejectedAlternativesSummary')}</summary>{move.rejectedAlternatives.map(item => <div key={`${move.assignmentId}-${item.date}`}><strong>{item.date}</strong><span>{item.reasons.join('；')}</span></div>)}</details>}</div>}
+          <button className={decision.mode === 'accept' ? 'choice-active' : ''} onClick={() => onDecision(assignment.id, { ...decision, mode: 'accept', date: undefined, previewFixed: true })}>{t('replanDialog.accept')}</button>
+          <button className={decision.mode === 'keep' ? 'choice-active' : ''} onClick={() => onDecision(assignment.id, { ...decision, mode: 'keep', date: undefined, previewFixed: true })}>{t('replanDialog.keepOriginal')}</button>
+          <label className="inline-date-choice"><span>{t('replanDialog.changeTo')}</span><input
             type="date"
             min={beforeState.settings.startDate}
             max={beforeState.settings.endDate}
             value={decision.mode === 'custom' ? decision.date ?? '' : ''}
             onChange={event => onDecision(assignment.id, { ...decision, mode: 'custom', date: event.target.value, previewFixed: true })}
           /></label>
-          <label className="lock-choice"><input type="checkbox" checked={Boolean(decision.lock)} onChange={event => onDecision(assignment.id, { ...decision, lock: event.target.checked, previewFixed: true })}/><Lock size={14}/>锁定结果</label>
-          {decision.previewFixed && <><span className="preview-fixed-badge">本次预览固定</span><button onClick={() => onDecision(assignment.id, { ...decision, previewFixed: false })}>解除固定</button></>}
+          <label className="lock-choice"><input type="checkbox" checked={Boolean(decision.lock)} onChange={event => onDecision(assignment.id, { ...decision, lock: event.target.checked, previewFixed: true })}/><Lock size={14}/>{t('replanDialog.lockResult')}</label>
+          {decision.previewFixed && <><span className="preview-fixed-badge">{t('replanDialog.previewFixedBadge')}</span><button onClick={() => onDecision(assignment.id, { ...decision, previewFixed: false })}>{t('replanDialog.unfix')}</button></>}
         </div>}
       </article>
     })}
@@ -167,6 +169,7 @@ export function ReplanDialog({
   onClose: () => void
   onApply: (result: ReplanResult, state: AppState, audit: ReplanAudit) => void
 }) {
+  const t = useT()
   const [strategy, setStrategy] = useState<ReplanStrategy>('balanced')
   const [decisions, setDecisions] = useState<Record<string, MoveDecision>>({})
   const [acceptedDayTypes, setAcceptedDayTypes] = useState<Record<string, boolean>>({})
@@ -390,35 +393,35 @@ export function ReplanDialog({
   const detailType = detailDate && editedState ? detailOverride?.type ?? editedState.dayConfigs[detailDate]?.type ?? 'regular' : 'regular'
 
   return <>
-    <Modal open={open} title="重排中心 · 先预览，再决定" onClose={onClose} wide mobileFullscreen>
+    <Modal open={open} title={t('replanDialog.modalTitle')} onClose={onClose} wide mobileFullscreen>
       <div className="replan-controls">
         <div className="segmented-control">
-          <button className={request.mode === 'repair' ? 'active' : ''} onClick={() => onRequestChange({ ...request, mode: 'repair' })}>局部修复</button>
-          <button className={request.mode === 'full' ? 'active' : ''} onClick={() => onRequestChange({ ...request, mode: 'full' })}>全面重排</button>
+          <button className={request.mode === 'repair' ? 'active' : ''} onClick={() => onRequestChange({ ...request, mode: 'repair' })}>{t('replanDialog.modePartialRepair')}</button>
+          <button className={request.mode === 'full' ? 'active' : ''} onClick={() => onRequestChange({ ...request, mode: 'full' })}>{t('replanDialog.modeFullReplan')}</button>
         </div>
-        <label className="field compact-field"><span>从哪天开始</span><input type="date" value={request.fromDate} onChange={event => onRequestChange({ ...request, fromDate: event.target.value })}/></label>
-        <label className="field compact-field"><span>冻结近期天数</span><NumericInput min={0} max={7} value={request.freezeDays ?? 2} onValueChange={value => onRequestChange({ ...request, freezeDays: value })}/></label>
-        <button className="secondary-button" onClick={() => onRegenerate(request)}><RefreshCw size={16}/>重新计算</button>
-        <button className="secondary-button" disabled={!undoStack.length} onClick={undoPreview}><Undo2 size={16}/>撤销预览操作</button>
-        <p className="replan-control-note">过去日期完全冻结；今天按真实学习时间半冻结。全面重排默认从明天开始，手动安排长期受到保护。</p>
+        <label className="field compact-field"><span>{t('replanDialog.fromDateLabel')}</span><input type="date" value={request.fromDate} onChange={event => onRequestChange({ ...request, fromDate: event.target.value })}/></label>
+        <label className="field compact-field"><span>{t('replanDialog.freezeDaysLabel')}</span><NumericInput min={0} max={7} value={request.freezeDays ?? 2} onValueChange={value => onRequestChange({ ...request, freezeDays: value })}/></label>
+        <button className="secondary-button" onClick={() => onRegenerate(request)}><RefreshCw size={16}/>{t('replanDialog.recalculate')}</button>
+        <button className="secondary-button" disabled={!undoStack.length} onClick={undoPreview}><Undo2 size={16}/>{t('replanDialog.undoPreview')}</button>
+        <p className="replan-control-note">{t('replanDialog.controlNote')}</p>
       </div>
 
       {bundle?.todaySnapshot && <section className="today-replan-snapshot">
-        <div><strong>今日执行快照</strong><span>{bundle.todaySnapshot.message}</span></div>
+        <div><strong>{t('replanDialog.snapshotTitle')}</strong><span>{bundle.todaySnapshot.message}</span></div>
         <div className="today-snapshot-values">
-          <span>真实计时 {minutesText(bundle.todaySnapshot.actualMinutes)}</span>
-          {bundle.todaySnapshot.inferredMinutes > 0 && <span>推定用时 {minutesText(bundle.todaySnapshot.inferredMinutes)}</span>}
-          <span>已完成 {bundle.todaySnapshot.completedCount} 项</span>
-          <span>自动剩余 {minutesText(bundle.todaySnapshot.remainingCapacity)}</span>
+          <span>{t('replanDialog.actualTiming', { minutes: minutesText(bundle.todaySnapshot.actualMinutes) })}</span>
+          {bundle.todaySnapshot.inferredMinutes > 0 && <span>{t('replanDialog.inferredUsage', { minutes: minutesText(bundle.todaySnapshot.inferredMinutes) })}</span>}
+          <span>{t('replanDialog.completedCount', { count: bundle.todaySnapshot.completedCount })}</span>
+          <span>{t('replanDialog.autoRemaining', { minutes: minutesText(bundle.todaySnapshot.remainingCapacity) })}</span>
         </div>
         <div className="today-extra-control">
-          <span>从现在起，今天还能接收的新任务：</span>
-          {[0, 30, 60].map(minutes => <button key={minutes} className={(request.todayExtraMinutes ?? 0) === minutes ? 'choice-active' : ''} onClick={() => regenerateWith({ todayExtraMinutes: minutes })}>{minutes === 0 ? '今天不再新增' : `还能学${minutes}分钟`}</button>)}
-          <label><span>自定义</span><NumericInput min={0} max={1440} step={10} value={![0, 30, 60].includes(request.todayExtraMinutes ?? 0) ? request.todayExtraMinutes : undefined} placeholder="分钟" onValueChange={value => onRequestChange({ ...request, todayExtraMinutes: value })} onEmpty={() => onRequestChange({ ...request, todayExtraMinutes: 0 })}/></label>
+          <span>{t('replanDialog.todayExtraLabel')}</span>
+          {[0, 30, 60].map(minutes => <button key={minutes} className={(request.todayExtraMinutes ?? 0) === minutes ? 'choice-active' : ''} onClick={() => regenerateWith({ todayExtraMinutes: minutes })}>{minutes === 0 ? t('replanDialog.todayNoMore') : t('replanDialog.todayCanStudy', { minutes })}</button>)}
+          <label><span>{t('replanDialog.customLabel')}</span><NumericInput min={0} max={1440} step={10} value={![0, 30, 60].includes(request.todayExtraMinutes ?? 0) ? request.todayExtraMinutes : undefined} placeholder={t('replanDialog.minutesPlaceholder')} onValueChange={value => onRequestChange({ ...request, todayExtraMinutes: value })} onEmpty={() => onRequestChange({ ...request, todayExtraMinutes: 0 })}/></label>
         </div>
       </section>}
 
-      {!result || !editedState ? <p>正在计算……</p> : <>
+      {!result || !editedState ? <p>{t('replanDialog.calculating')}</p> : <>
         <div className="scenario-tabs">
           {bundle?.scenarios.map(item => <button key={item.strategy} className={strategy === item.strategy ? 'active' : ''} onClick={() => {
             setStrategy(item.strategy)
@@ -433,47 +436,47 @@ export function ReplanDialog({
         </div>
 
         {bundle && bundle.issues.length > 0 && <section className="replan-section detected-section">
-          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>系统检测到的问题</h3><p>这是重排前的现状；是否处理以及采用哪个方案由你决定。</p></div></div>
+          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>{t('replanDialog.detectedIssuesTitle')}</h3><p>{t('replanDialog.detectedIssuesBody')}</p></div></div>
           <div className="detected-issue-list">{bundle.issues.slice(0, 16).map((issue, index) => <div key={index}>{issue}</div>)}</div>
         </section>}
 
         <div className="summary-grid replan-summary-grid">
-          <div className="metric-card"><span>将移动</span><strong>{result.summary.moved}</strong><small>项任务</small></div>
-          <div className="metric-card"><span>改动日期</span><strong>{result.disturbance.changedDays}</strong><small>天</small></div>
-          <div className="metric-card"><span>原计划保留率</span><strong>{Math.round(result.disturbance.originalDateRetentionRate * 100)}%</strong><small>越高越少扰动</small></div>
-          <div className="metric-card"><span>尚未解决</span><strong>{result.summary.unresolved}</strong><small>项；不会强塞</small></div>
-          <div className="metric-card"><span>保留手动安排</span><strong>{result.summary.preservedManual}</strong><small>项</small></div>
-          <div className="metric-card"><span>核心任务预计</span><strong>{result.summary.coreAfter ?? '待决定'}</strong><small>原先 {result.summary.coreBefore ?? '未知'}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricMoved')}</span><strong>{result.summary.moved}</strong><small>{t('replanDialog.metricMovedUnit')}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricChangedDays')}</span><strong>{result.disturbance.changedDays}</strong><small>{t('replanDialog.metricChangedDaysUnit')}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricRetentionRate')}</span><strong>{Math.round(result.disturbance.originalDateRetentionRate * 100)}%</strong><small>{t('replanDialog.metricRetentionRateUnit')}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricUnresolved')}</span><strong>{result.summary.unresolved}</strong><small>{t('replanDialog.metricUnresolvedUnit')}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricPreservedManual')}</span><strong>{result.summary.preservedManual}</strong><small>{t('replanDialog.metricPreservedManualUnit')}</small></div>
+          <div className="metric-card"><span>{t('replanDialog.metricCoreEstimate')}</span><strong>{result.summary.coreAfter ?? t('replanDialog.metricCoreUnknown')}</strong><small>{t('replanDialog.metricCoreBefore', { value: result.summary.coreBefore ?? t('replanDialog.metricCoreBeforeUnknown') })}</small></div>
         </div>
 
         <section className="replan-section">
-          <div className="replan-section-title"><SlidersHorizontal size={18}/><div><h3>方案后果</h3><p>保留完整信息；点击每一项可以展开查看问题、任务和日期变化。</p></div></div>
+          <div className="replan-section-title"><SlidersHorizontal size={18}/><div><h3>{t('replanDialog.consequenceSectionTitle')}</h3><p>{t('replanDialog.consequenceSectionBody')}</p></div></div>
           <div className="consequence-detail-list">
             <details>
-              <summary><div><strong>检测到 {bundle?.issues.length ?? 0} 个待处理问题</strong><span>展开查看每一个问题的完整说明</span></div><ChevronDown size={17}/></summary>
+              <summary><div><strong>{t('replanDialog.issuesDetectedSummary', { count: bundle?.issues.length ?? 0 })}</strong><span>{t('replanDialog.issuesDetectedHint')}</span></div><ChevronDown size={17}/></summary>
               <div className="consequence-detail-body issue-detail-body">
-                {(bundle?.issues.length ?? 0) === 0 ? <p className="muted-text">重排前没有检测到待处理问题。</p> : bundle?.issues.map((issue, index) => <article key={index}><strong>问题 {index + 1}</strong><p>{issue}</p></article>)}
+                {(bundle?.issues.length ?? 0) === 0 ? <p className="muted-text">{t('replanDialog.noIssuesDetected')}</p> : bundle?.issues.map((issue, index) => <article key={index}><strong>{t('replanDialog.issueLabel', { index: index + 1 })}</strong><p>{issue}</p></article>)}
               </div>
             </details>
             <details>
-              <summary><div><strong>将移动 {result.moves.length} 项任务，涉及 {result.disturbance.changedDays} 天</strong><span>展开查看每项任务从哪天移到哪天，以及移动原因</span></div><ChevronDown size={17}/></summary>
+              <summary><div><strong>{t('replanDialog.movesSummary', { count: result.moves.length, days: result.disturbance.changedDays })}</strong><span>{t('replanDialog.movesHint')}</span></div><ChevronDown size={17}/></summary>
               <div className="consequence-detail-body move-detail-body">
-                {result.moves.length === 0 ? <p className="muted-text">该方案不需要移动任务。</p> : result.moves.map(move => <article key={move.assignmentId}>
+                {result.moves.length === 0 ? <p className="muted-text">{t('replanDialog.noMovesNeeded')}</p> : result.moves.map(move => <article key={move.assignmentId}>
                   <div className="move-detail-title"><strong>{move.title}</strong><span>{move.subject}</span></div>
-                  <div className="move-date-route"><span>{move.from ? fmtDate(move.from) : '未安排'}</span><b>→</b><span>{move.to ? fmtDate(move.to) : '暂不安排'}</span></div>
-                  <p><strong>原因：</strong>{move.reason}</p>
-                  <p><strong>影响：</strong>{move.impact}</p>
+                  <div className="move-date-route"><span>{move.from ? fmtDate(move.from) : t('replanDialog.unscheduledLabel')}</span><b>→</b><span>{move.to ? fmtDate(move.to) : t('replanDialog.notYetScheduledLabel')}</span></div>
+                  <p><strong>{t('replanDialog.reasonLabel')}</strong>{move.reason}</p>
+                  <p><strong>{t('replanDialog.impactLabel')}</strong>{move.impact}</p>
                 </article>)}
               </div>
             </details>
             <details>
-              <summary><div><strong>计划扰动与保留情况</strong><span>保留率 {Math.round(result.disturbance.originalDateRetentionRate * 100)}%，平均每日变化 {minutesText(result.disturbance.averageLoadDelta)}</span></div><ChevronDown size={17}/></summary>
+              <summary><div><strong>{t('replanDialog.disturbanceSummary')}</strong><span>{t('replanDialog.disturbanceHint', { rate: Math.round(result.disturbance.originalDateRetentionRate * 100), minutes: minutesText(result.disturbance.averageLoadDelta) })}</span></div><ChevronDown size={17}/></summary>
               <div className="consequence-detail-body disturbance-detail-body">
-                <article><strong>原计划日期保留率</strong><span>{Math.round(result.disturbance.originalDateRetentionRate * 100)}%</span></article>
-                <article><strong>改动日期</strong><span>{result.disturbance.changedDays} 天</span></article>
-                <article><strong>平均每日负载变化</strong><span>{minutesText(result.disturbance.averageLoadDelta)}</span></article>
-                <article><strong>最大单日负载变化</strong><span>{minutesText(result.disturbance.maximumLoadDelta)}</span></article>
-                <article><strong>保留原日任务组合</strong><span>{result.disturbance.preservedDailyBundles} 组</span></article>
+                <article><strong>{t('replanDialog.originalRetentionRate')}</strong><span>{Math.round(result.disturbance.originalDateRetentionRate * 100)}%</span></article>
+                <article><strong>{t('replanDialog.changedDaysLabel')}</strong><span>{t('replanDialog.changedDaysUnit', { count: result.disturbance.changedDays })}</span></article>
+                <article><strong>{t('replanDialog.averageLoadDelta')}</strong><span>{minutesText(result.disturbance.averageLoadDelta)}</span></article>
+                <article><strong>{t('replanDialog.maxLoadDelta')}</strong><span>{minutesText(result.disturbance.maximumLoadDelta)}</span></article>
+                <article><strong>{t('replanDialog.preservedBundles')}</strong><span>{t('replanDialog.preservedBundlesUnit', { count: result.disturbance.preservedDailyBundles })}</span></article>
               </div>
             </details>
           </div>
@@ -481,35 +484,35 @@ export function ReplanDialog({
         </section>
 
         {result.constraintConflicts.length > 0 && <section className="replan-section constraint-conflict-section">
-          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>没有完全合法的位置，需要你选择</h3><p>所有每日上限默认都是硬限制。这里只提供一次性放宽，不会永久改变任务组规则。</p></div></div>
+          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>{t('replanDialog.conflictSectionTitle')}</h3><p>{t('replanDialog.conflictSectionBody')}</p></div></div>
           <div className="constraint-conflict-list">{result.constraintConflicts.map(conflict => {
             const conflictId = `${conflict.date}:${conflict.key}`
             const limit = limitDrafts[conflictId] ?? conflict.minimumFeasibleLimit
             const extra = Math.max(0, limit - conflict.limit)
             return <article key={conflictId}>
-              <div><strong>{conflict.date} · {conflict.label}</strong><span>当前需要 {Math.round(conflict.current)}，默认上限 {Math.round(conflict.limit)}；影响 {conflict.affectedAssignmentIds.length} 项任务。</span></div>
-              <div className="quantified-negotiation"><strong>量化协商</strong><span>至少需要放宽 {Math.round(conflict.deficit)}；本次上限设为 {Math.round(limit)}，相当于增加 {Math.round(extra)} 个单位。</span><label><span>本次上限</span><NumericInput min={Math.ceil(conflict.limit)} max={Math.max(Math.ceil(conflict.current) + 999, Math.ceil(conflict.limit) + 1)} value={limit} onValueChange={value => setLimitDrafts(previous => ({ ...previous, [conflictId]: value }))}/></label></div>
+              <div><strong>{conflict.date} · {conflict.label}</strong><span>{t('replanDialog.conflictSummary', { current: Math.round(conflict.current), limit: Math.round(conflict.limit), count: conflict.affectedAssignmentIds.length })}</span></div>
+              <div className="quantified-negotiation"><strong>{t('replanDialog.negotiationTitle')}</strong><span>{t('replanDialog.negotiationBody', { deficit: Math.round(conflict.deficit), limit: Math.round(limit), extra: Math.round(extra) })}</span><label><span>{t('replanDialog.onceLimitLabel')}</span><NumericInput min={Math.ceil(conflict.limit)} max={Math.max(Math.ceil(conflict.current) + 999, Math.ceil(conflict.limit) + 1)} value={limit} onValueChange={value => setLimitDrafts(previous => ({ ...previous, [conflictId]: value }))}/></label></div>
               <ul>{conflict.options.map(option => <li key={option}>{option}</li>)}</ul>
-              <button className="secondary-button" disabled={limit < conflict.minimumFeasibleLimit} onClick={() => allowConstraintOnce(conflict.date, conflict.key, limit, conflict.affectedAssignmentIds)}>仅本次放宽到 {Math.round(limit)} 并重算</button>
+              <button className="secondary-button" disabled={limit < conflict.minimumFeasibleLimit} onClick={() => allowConstraintOnce(conflict.date, conflict.key, limit, conflict.affectedAssignmentIds)}>{t('replanDialog.allowOnceButton', { limit: Math.round(limit) })}</button>
             </article>
           })}</div>
         </section>}
 
         {protectedBufferDates.length > 0 && <section className="replan-section buffer-use-section">
-          <div className="replan-section-title"><CalendarClock size={18}/><div><h3>受保护的活动日 / 缓冲日</h3><p>系统默认不会向这些日期增加任务。确有必要时，可以只为本次重排开放某一天；不会永久取消保护。</p></div></div>
+          <div className="replan-section-title"><CalendarClock size={18}/><div><h3>{t('replanDialog.bufferSectionTitle')}</h3><p>{t('replanDialog.bufferSectionBody')}</p></div></div>
           <div className="buffer-use-list">{protectedBufferDates.map(date => {
             const config = currentState.dayConfigs[date]
             const allowed = request.allowBufferUseDates?.includes(date) ?? false
             return <article className={allowed ? 'buffer-use-active' : ''} key={date}>
-              <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong><span>{config?.availableMinutes === 0 ? '完全休息' : `最多 ${minutesText(getCapacity(currentState, date))}`} · {config?.bufferReason || '用户手动设置'}</span></div>
-              <button className={allowed ? 'secondary-button choice-active' : 'secondary-button'} onClick={() => toggleBufferUse(date)}>{allowed ? '恢复保护' : '仅本次允许使用'}</button>
+              <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong><span>{config?.availableMinutes === 0 ? t('replanDialog.bufferFullRest') : t('replanDialog.bufferMax', { minutes: minutesText(getCapacity(currentState, date)) })} · {config?.bufferReason || t('replanDialog.bufferManualReason')}</span></div>
+              <button className={allowed ? 'secondary-button choice-active' : 'secondary-button'} onClick={() => toggleBufferUse(date)}>{allowed ? t('replanDialog.restoreProtection') : t('replanDialog.allowOnceOnly')}</button>
             </article>
           })}</div>
-          {(request.allowBufferUseDates?.length ?? 0) > 0 && <p className="buffer-use-warning">开放缓冲日只解除“禁止新增”的保护，仍必须遵守该日可用时间、任务上限和高强度限制。</p>}
+          {(request.allowBufferUseDates?.length ?? 0) > 0 && <p className="buffer-use-warning">{t('replanDialog.bufferWarning')}</p>}
         </section>}
 
         {changedLoads.length > 0 && <section className="replan-section">
-          <div className="replan-section-title section-title-with-actions"><CalendarClock size={18}/><div><h3>修改前后负载</h3><p>点击任意日期，查看两栏任务差异并直接接受、否决或改期。</p></div><div className="segmented-control small"><button className={!onlyChanges ? 'active' : ''} onClick={() => setOnlyChanges(false)}>全部任务</button><button className={onlyChanges ? 'active' : ''} onClick={() => setOnlyChanges(true)}>只看变化</button></div></div>
+          <div className="replan-section-title section-title-with-actions"><CalendarClock size={18}/><div><h3>{t('replanDialog.loadCompareTitle')}</h3><p>{t('replanDialog.loadCompareBody')}</p></div><div className="segmented-control small"><button className={!onlyChanges ? 'active' : ''} onClick={() => setOnlyChanges(false)}>{t('replanDialog.allTasks')}</button><button className={onlyChanges ? 'active' : ''} onClick={() => setOnlyChanges(true)}>{t('replanDialog.onlyChanges')}</button></div></div>
           <div className="load-compare-list">{changedLoads.map(change => {
             const beforeRatio = change.beforeCapacity ? change.beforeMinutes / change.beforeCapacity : 0
             const afterRatio = change.afterCapacity ? change.afterMinutes / change.afterCapacity : 0
@@ -517,10 +520,10 @@ export function ReplanDialog({
             return <div className={`load-compare-item ${expanded ? 'expanded' : ''}`} key={change.date}>
               <button className="load-compare-row" onClick={() => setLoadCompareDate(expanded ? undefined : change.date)}>
                 <strong>{fmtDate(change.date)} · {fmtWeekday(change.date)}</strong>
-                <div><span>原 {minutesText(change.beforeMinutes)}</span><i style={{ width: `${Math.min(100, beforeRatio * 100)}%` }}/></div>
+                <div><span>{t('replanDialog.loadBefore', { minutes: minutesText(change.beforeMinutes) })}</span><i style={{ width: `${Math.min(100, beforeRatio * 100)}%` }}/></div>
                 <b>→</b>
-                <div><span>新 {minutesText(change.afterMinutes)}</span><i className={afterRatio > 1 ? 'over' : ''} style={{ width: `${Math.min(100, afterRatio * 100)}%` }}/></div>
-                <small>容量 {minutesText(change.afterCapacity)}</small>
+                <div><span>{t('replanDialog.loadAfter', { minutes: minutesText(change.afterMinutes) })}</span><i className={afterRatio > 1 ? 'over' : ''} style={{ width: `${Math.min(100, afterRatio * 100)}%` }}/></div>
+                <small>{t('replanDialog.capacityLabel', { minutes: minutesText(change.afterCapacity) })}</small>
                 {expanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
               </button>
               {expanded && <DayDiffPanel
@@ -538,17 +541,17 @@ export function ReplanDialog({
         </section>}
 
         {result.dayTypeSuggestions.length > 0 && <section className="replan-section">
-          <div className="replan-section-title"><CalendarClock size={18}/><div><h3>日期类型建议</h3><p>默认不应用；勾选或在逐日详情中修改后才会随本次重排生效。</p></div></div>
+          <div className="replan-section-title"><CalendarClock size={18}/><div><h3>{t('replanDialog.dayTypeSuggestionTitle')}</h3><p>{t('replanDialog.dayTypeSuggestionBody')}</p></div></div>
           <div className="suggestion-list">{result.dayTypeSuggestions.map(suggestion => <label key={suggestion.date} className="suggestion-row">
             <input type="checkbox" checked={Boolean(acceptedDayTypes[suggestion.date])} onChange={event => toggleSuggestedDayType(suggestion.date, event.target.checked)}/>
-            <div><strong>{suggestion.date}：{dayTypeLabel[suggestion.from]} → {dayTypeLabel[suggestion.to]}</strong><span>{suggestion.reason}，增加 {minutesText(suggestion.capacityGain)} 容量。</span></div>
+            <div><strong>{t('replanDialog.dayTypeSuggestionRow', { date: suggestion.date, from: t(`dayType.${suggestion.from}`), to: t(`dayType.${suggestion.to}`) })}</strong><span>{t('replanDialog.dayTypeSuggestionReason', { reason: suggestion.reason, minutes: minutesText(suggestion.capacityGain) })}</span></div>
           </label>)}</div>
         </section>}
 
         <section className="replan-section">
-          <div className="replan-section-title"><Check size={18}/><div><h3>逐项微调</h3><p>点击日期原地展开，最多同时展开 3 天；任务可拖到另一个已展开日期。</p></div></div>
+          <div className="replan-section-title"><Check size={18}/><div><h3>{t('replanDialog.microTuneTitle')}</h3><p>{t('replanDialog.microTuneBody')}</p></div></div>
           <div className="micro-day-list">
-            {microDates.length === 0 && <p className="muted-text">这个方案不需要移动任务。</p>}
+            {microDates.length === 0 && <p className="muted-text">{t('replanDialog.noMovesNeededMicro')}</p>}
             {microDates.map(date => {
               const expanded = expandedDates.includes(date)
               const beforeMinutes = dayLoad(currentState, date)
@@ -561,7 +564,7 @@ export function ReplanDialog({
                 onDrop={event => dropPreviewTask(date, event)}
               >
                 <button className="micro-day-head" onClick={() => toggleExpandedDate(date)}>
-                  <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong><span>{minutesText(beforeMinutes)} → {minutesText(afterMinutes)} · {changeCount} 项变化</span></div>
+                  <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong><span>{t('replanDialog.microDayChangeCount', { before: minutesText(beforeMinutes), after: minutesText(afterMinutes), count: changeCount })}</span></div>
                   {expanded ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}
                 </button>
                 {expanded && <>
@@ -576,7 +579,7 @@ export function ReplanDialog({
                     onDragStart={handlePreviewDragStart}
                     compact
                   />
-                  <div className="micro-day-footer"><button className="secondary-button" onClick={() => setDetailDate(date)}>详细调整</button></div>
+                  <div className="micro-day-footer"><button className="secondary-button" onClick={() => setDetailDate(date)}>{t('replanDialog.detailAdjust')}</button></div>
                 </>}
               </article>
             })}
@@ -584,16 +587,16 @@ export function ReplanDialog({
         </section>
 
         {debouncedIssues.length > 0 && <section className="replan-section warning-section">
-          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>按当前微调结果检查</h3><p>负载即时更新；阶段目标和复杂风险在停止操作约半秒后刷新。</p></div></div>
+          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>{t('replanDialog.microCheckTitle')}</h3><p>{t('replanDialog.microCheckBody')}</p></div></div>
           <div className="warning-list">{debouncedIssues.map((issue, index) => <div key={`${issue.date ?? 'all'}-${index}`} className={`warning-item issue-${issue.level}`}>{issue.message}</div>)}</div>
         </section>}
 
         {result.warnings.length > 0 && <section className="replan-section warning-section">
-          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>仍需注意</h3><p>应用前请查看不能自动消除的风险。</p></div></div>
+          <div className="replan-section-title"><AlertTriangle size={18}/><div><h3>{t('replanDialog.warningSectionTitle')}</h3><p>{t('replanDialog.warningSectionBody')}</p></div></div>
           <div className="warning-list">{result.warnings.slice(0, 20).map((warning, index) => <div key={index} className="warning-item">{warning}</div>)}</div>
         </section>}
 
-        <div className="modal-actions sticky-actions"><button className="secondary-button" onClick={onClose}>放弃本次重排</button><button className="primary-button" onClick={() => {
+        <div className="modal-actions sticky-actions"><button className="secondary-button" onClick={onClose}>{t('replanDialog.discardReplan')}</button><button className="primary-button" onClick={() => {
           const auditDates = dateRange(currentState.settings.startDate, currentState.settings.endDate).filter(date => {
             const before = currentState.dayConfigs[date]
             const after = editedState.dayConfigs[date]
@@ -617,26 +620,26 @@ export function ReplanDialog({
             allowBufferUseDates: request.allowBufferUseDates
           }
           onApply(result, editedState, audit)
-        }}>应用全部已接受调整</button></div>
+        }}>{t('replanDialog.applyAllAccepted')}</button></div>
       </>}
     </Modal>
 
     <Drawer
       open={Boolean(open && detailDate && result && editedState)}
-      title={detailDate ? `${fmtDate(detailDate)} · ${fmtWeekday(detailDate)}` : '逐日调整'}
-      subtitle="在当前预览内调整；正式应用前不会写入计划。"
+      title={detailDate ? `${fmtDate(detailDate)} · ${fmtWeekday(detailDate)}` : t('replanDialog.drawerDefaultTitle')}
+      subtitle={t('replanDialog.drawerSubtitle')}
       onClose={() => setDetailDate(undefined)}
       wide
     >
       {detailDate && result && editedState && <>
         <div className="drawer-day-controls">
-          <label className="field"><span>日期类型</span><select value={detailType} onChange={event => changeDayType(detailDate, { type: event.target.value as DayType, customMinutes: dayTypeOverrides[detailDate]?.customMinutes })}>{(['regular', 'study', 'travel', 'custom'] as DayType[]).map(type => <option value={type} key={type}>{dayTypeLabel[type]}</option>)}</select></label>
-          {detailType === 'custom' && <label className="field"><span>自定义容量（分钟）</span><NumericInput min={0} max={1440} value={dayTypeOverrides[detailDate]?.customMinutes ?? getCapacity(editedState, detailDate)} onValueChange={value => changeDayType(detailDate, { type: 'custom', customMinutes: value })}/></label>}
+          <label className="field"><span>{t('replanDialog.dayTypeLabel')}</span><select value={detailType} onChange={event => changeDayType(detailDate, { type: event.target.value as DayType, customMinutes: dayTypeOverrides[detailDate]?.customMinutes })}>{(['regular', 'study', 'travel', 'custom'] as DayType[]).map(type => <option value={type} key={type}>{t(`dayType.${type}`)}</option>)}</select></label>
+          {detailType === 'custom' && <label className="field"><span>{t('replanDialog.customCapacityLabel')}</span><NumericInput min={0} max={1440} value={dayTypeOverrides[detailDate]?.customMinutes ?? getCapacity(editedState, detailDate)} onValueChange={value => changeDayType(detailDate, { type: 'custom', customMinutes: value })}/></label>}
           <div className="day-type-impact">
-            <span>原容量 {minutesText(getCapacity(currentState, detailDate))}</span>
+            <span>{t('replanDialog.originalCapacity', { minutes: minutesText(getCapacity(currentState, detailDate)) })}</span>
             <b>→</b>
-            <span>当前容量 {minutesText(getCapacity(editedState, detailDate))}</span>
-            <em>{dayLoad(editedState, detailDate) > getCapacity(editedState, detailDate) ? `超载 ${minutesText(dayLoad(editedState, detailDate) - getCapacity(editedState, detailDate))}` : '当前不超载'}</em>
+            <span>{t('replanDialog.currentCapacity', { minutes: minutesText(getCapacity(editedState, detailDate)) })}</span>
+            <em>{dayLoad(editedState, detailDate) > getCapacity(editedState, detailDate) ? t('replanDialog.overloadedBy', { minutes: minutesText(dayLoad(editedState, detailDate) - getCapacity(editedState, detailDate)) }) : t('replanDialog.notOverloaded')}</em>
           </div>
         </div>
         <DayDiffPanel
@@ -649,7 +652,7 @@ export function ReplanDialog({
           onDecision={changeDecision}
           onDragStart={handlePreviewDragStart}
         />
-        <div className="drawer-actions"><button className="secondary-button" onClick={() => restoreDayType(detailDate)}><RotateCcw size={15}/>恢复原日期类型</button><button className="primary-button" onClick={() => setDetailDate(undefined)}>完成本日微调</button></div>
+        <div className="drawer-actions"><button className="secondary-button" onClick={() => restoreDayType(detailDate)}><RotateCcw size={15}/>{t('replanDialog.restoreDayType')}</button><button className="primary-button" onClick={() => setDetailDate(undefined)}>{t('replanDialog.finishDayTuning')}</button></div>
       </>}
     </Drawer>
   </>

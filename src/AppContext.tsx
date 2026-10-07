@@ -1,3 +1,4 @@
+import { tr } from './lib/i18n'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   AppSettings, AppState, Assignment, CalendarConstraint, CreateResult, DayConfig, DurationSuggestion, Goal, GoalDraft,
@@ -152,7 +153,7 @@ function taskGroupFromDraft(draft: TaskGroupDraft, state: AppState, now: string)
   const recurrenceStart = recurring ? (draft.recurrenceStart ?? state.settings.startDate) : undefined
   const recurrenceEnd = recurring ? (draft.recurrenceEnd ?? state.settings.endDate) : undefined
   return {
-    id: uid('group'), subject: draft.subject, title: draft.title.trim() || '未命名任务组', priority: draft.priority,
+    id: uid('group'), subject: draft.subject, title: draft.title.trim() || tr('ac.001'), priority: draft.priority,
     quantity: splitSessionCount(draft), sourceQuantity: Math.max(1, Math.round(draft.quantity)), unitMinutes: Math.max(1, Math.round(draft.unitMinutes)),
     targetDate: state.settings.endDate, dueDate: state.settings.endDate, dailyMax: draft.dailyMax,
     recurring, recurrenceStart, recurrenceEnd,
@@ -432,8 +433,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     assignment.updatedAt = changedAt
     const nextDate = timeEntryDate(entry) ?? previousDate
     const auditEvent: PlanChangeEvent = {
-      id: uid('event'), type: 'time-entry-change', action: 'repair', title: `修改“${assignment.title}”的时间记录`,
-      description: `时间流水由 ${previousDate} 的 ${previousMinutes} 分钟修改为 ${nextDate} 的 ${entry.minutes} 分钟。`,
+      id: uid('event'), type: 'time-entry-change', action: 'repair', title: tr('ac.002', { title: assignment.title }),
+      description: tr('ac.003', { previousDate, previousMinutes, nextDate, minutes: entry.minutes }),
       affectedGoalIds: [], affectedGroupIds: [assignment.groupId], affectedAssignmentIds: [assignment.id],
       affectedDates: Array.from(new Set([previousDate, nextDate])), createdAt: changedAt,
       metadata: { operation: 'edit', entryId, previousMinutes, nextMinutes: entry.minutes, previousDate, nextDate },
@@ -451,8 +452,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isInferredTimeEntry(entry)) assignment.actualMinutes = Math.max(0, assignment.actualMinutes - Math.max(0, Number(entry.minutes) || 0))
     assignment.updatedAt = deletedAt
     const auditEvent: PlanChangeEvent = {
-      id: uid('event'), type: 'time-entry-change', action: 'repair', title: `删除“${assignment.title}”的时间记录`,
-      description: `删除 ${entryDate} 的 ${entry.minutes} 分钟时间流水；任务累计实际同步扣减。`,
+      id: uid('event'), type: 'time-entry-change', action: 'repair', title: tr('ac.004', { title: assignment.title }),
+      description: tr('ac.005', { entryDate, minutes: entry.minutes }),
       affectedGoalIds: [], affectedGroupIds: [assignment.groupId], affectedAssignmentIds: [assignment.id],
       affectedDates: [entryDate], createdAt: deletedAt,
       metadata: { operation: 'delete', entryId, deletedEntry: { ...entry } },
@@ -531,7 +532,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const group = next.taskGroups.find(item => item.id === id)
-    if (!group) throw new Error('任务组不存在，无法生成删除预览。')
+    if (!group) throw new Error(tr('ac.006'))
     const affected = next.assignments.filter(item => item.groupId === id)
     const affectedGoalIds = next.goals
       .filter(goal => goal.linkedTaskGroupIds.includes(id) || goal.completionConditions.some(condition => condition.groupId === id))
@@ -546,14 +547,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatedAt: nowISO(),
     }))
     const event = planEvent({
-      type: 'group-deletion', action: 'repair', title: `删除任务组：${group.title}`,
-      description: `第一方案只删除该任务组及其 ${affected.length} 项任务，并同步移除相关目标引用；不会移动其他任务，也不会顺便修复计划原有问题。`,
+      type: 'group-deletion', action: 'repair', title: tr('ac.007', { title: group.title }),
+      description: tr('ac.008', { length: affected.length }),
       affectedGoalIds, affectedGroupIds: [id], affectedAssignmentIds: affected.map(item => item.id),
       affectedDates: [...new Set(affected.map(item => item.scheduledDate).filter((date): date is string => Boolean(date)))],
       metadata: {
         explicitLocalOperation: true,
         operationScope: 'requested-change-only',
-        requestedChangeLabel: `仅删除任务组“${group.title}”`,
+        requestedChangeLabel: tr('ac.009', { title: group.title }),
         requestedChangeKind: 'group-deletion',
       },
     })
@@ -570,7 +571,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     history.current = [...history.current.slice(-29), previous]
     const next = cloneForMutation(previous)
     const affected = next.assignments.filter(item => item.groupId === id)
-    const event = planEvent({ type: 'group-deletion', action: 'repair', title: `删除任务组：${group.title}`, description: `删除 ${affected.length} 项任务并更新关联目标。`, affectedGoalIds: next.goals.filter(goal => goal.linkedTaskGroupIds.includes(id) || goal.completionConditions.some(condition => condition.groupId === id)).map(goal => goal.id), affectedGroupIds: [id], affectedAssignmentIds: affected.map(item => item.id), affectedDates: affected.map(item => item.scheduledDate).filter((date): date is string => Boolean(date)) })
+    const event = planEvent({ type: 'group-deletion', action: 'repair', title: tr('ac.007', { title: group.title }), description: tr('ac.010', { length: affected.length }), affectedGoalIds: next.goals.filter(goal => goal.linkedTaskGroupIds.includes(id) || goal.completionConditions.some(condition => condition.groupId === id)).map(goal => goal.id), affectedGroupIds: [id], affectedAssignmentIds: affected.map(item => item.id), affectedDates: affected.map(item => item.scheduledDate).filter((date): date is string => Boolean(date)) })
     next.taskGroups = next.taskGroups.filter(item => item.id !== id)
     next.assignments = next.assignments.filter(item => item.groupId !== id)
     next.goals = next.goals.map(goal => ({ ...goal, linkedTaskGroupIds: goal.linkedTaskGroupIds.filter(groupId => groupId !== id), completionConditions: goal.completionConditions.filter(condition => condition.groupId !== id) }))
@@ -585,7 +586,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const target = next.assignments.find(item => item.id === id)
-    if (!target) throw new Error('任务不存在，无法生成删除预览。')
+    if (!target) throw new Error(tr('ac.011'))
     const affectedGoalIds = next.goals
       .filter(goal => goal.linkedAssignmentIds.includes(id) || goal.linkedTaskGroupIds.includes(target.groupId) || goal.completionConditions.some(condition => condition.groupId === target.groupId))
       .map(goal => goal.id)
@@ -600,14 +601,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       next.taskGroups = next.taskGroups.filter(item => item.id !== group.id)
     }
     const event = planEvent({
-      type: 'assignment-deletion', action: 'repair', title: `移除任务：${target.title}`,
-      description: '第一方案只移除这一个任务并更新直接关联的数据；其他任务日期保持不变，计划原有冲突不会被自动扩大为重排。',
+      type: 'assignment-deletion', action: 'repair', title: tr('ac.012', { title: target.title }),
+      description: tr('ac.013'),
       affectedGoalIds, affectedGroupIds: [target.groupId], affectedAssignmentIds: [id],
       affectedDates: target.scheduledDate ? [target.scheduledDate] : [],
       metadata: {
         explicitLocalOperation: true,
         operationScope: 'requested-change-only',
-        requestedChangeLabel: `仅移除“${target.title}”`,
+        requestedChangeLabel: tr('ac.014', { title: target.title }),
         requestedChangeKind: 'assignment-deletion',
         taskHadExecutionRecord: target.actualMinutes > 0 || target.progress > 0 || target.timeEntries.length > 0,
       },
@@ -625,8 +626,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     history.current = [...history.current.slice(-29), previous]
     const next = cloneForMutation(previous)
     const event = planEvent({
-      type: 'rule-change', action: 'repair', title: `移除任务：${target.title}`,
-      description: target.actualMinutes > 0 || target.progress > 0 ? '此任务已有执行记录；移除前已创建可恢复计划版本。' : '移除任务并重新校准任务组数量。',
+      type: 'rule-change', action: 'repair', title: tr('ac.012', { title: target.title }),
+      description: target.actualMinutes > 0 || target.progress > 0 ? tr('ac.015') : tr('ac.016'),
       affectedGoalIds: next.goals.filter(goal => goal.linkedAssignmentIds.includes(id) || goal.linkedTaskGroupIds.includes(target.groupId) || goal.completionConditions.some(condition => condition.groupId === target.groupId)).map(goal => goal.id),
       affectedGroupIds: [target.groupId], affectedAssignmentIds: [id], affectedDates: target.scheduledDate ? [target.scheduledDate] : [],
     })
@@ -648,8 +649,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const next = cloneActiveState(before)
     const assignment = next.assignments.find(item => item.id === id)
     const newGroup = next.taskGroups.find(item => item.id === groupId)
-    if (!assignment || !newGroup || assignment.groupId === groupId) throw new Error('任务或目标任务组不存在。')
-    if (newGroup.recurring) throw new Error('每日重复任务组不接收临时单项任务。')
+    if (!assignment || !newGroup || assignment.groupId === groupId) throw new Error(tr('ac.017'))
+    if (newGroup.recurring) throw new Error(tr('ac.018'))
     const oldGroupId = assignment.groupId
     const oldGroup = next.taskGroups.find(item => item.id === oldGroupId)
     const now = nowISO()
@@ -696,11 +697,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const event = planEvent({
-      type: 'rule-change', action: 'repair', title: `更换任务组：${assignment.title}`,
-      description: `任务将从“${oldGroup?.title ?? oldGroupId}”转入“${newGroup.title}”。进度、实际用时、计时记录和备注保持不变；当前日期会按新组规则与目标重新校验。`,
+      type: 'rule-change', action: 'repair', title: tr('ac.019', { title: assignment.title }),
+      description: tr('ac.020', { v: oldGroup?.title ?? oldGroupId, title: newGroup.title }),
       affectedGoalIds: Array.from(new Set([...oldGoalIds, ...newGoalIds])), affectedGroupIds: [oldGroupId, groupId], affectedAssignmentIds: [id],
       affectedDates: assignment.scheduledDate ? [assignment.scheduledDate] : [],
-      metadata: { oldGroupId, newGroupId: groupId, adoptDefaultDuration: options.adoptDefaultDuration && canAdopt, numberingChoice: options.numberingChoice, explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: `仅将“${assignment.title}”移入“${newGroup.title}”` },
+      metadata: { oldGroupId, newGroupId: groupId, adoptDefaultDuration: options.adoptDefaultDuration && canAdopt, numberingChoice: options.numberingChoice, explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: tr('ac.021', { title: assignment.title, title2: newGroup.title }) },
     })
     next.changeEvents = [...next.changeEvents, event].slice(-100)
     next.updatedAt = now
@@ -715,7 +716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createdGroupIds: string[] = []
     if (!group || draft.standalone) {
       group = {
-        id: uid('group'), subject: draft.subject?.trim() || '其他', title: draft.title.trim() || '未命名任务', priority: draft.priority ?? 3, quantity: 0,
+        id: uid('group'), subject: draft.subject?.trim() || '其他', title: draft.title.trim() || tr('ac.022'), priority: draft.priority ?? 3, quantity: 0,
         unitMinutes: Math.max(1, Math.round(draft.estimatedMinutes)), targetDate: next.settings.endDate, dueDate: next.settings.endDate,
         countInStats: true, hidden: true, hiddenStandalone: true, activityType: 'normal', highIntensity: false,
         status: 'active', createdAt: now, updatedAt: now,
@@ -751,8 +752,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     group.updatedAt = now
     const inheritedGoalIds = next.goals.filter(goal => goal.linkedTaskGroupIds.includes(group!.id) || goal.completionConditions.some(condition => condition.groupId === group!.id)).map(goal => goal.id)
     const event = planEvent({
-      type: 'new-task-insertion', action: 'insert', title: `添加任务：${assignment.title}`,
-      description: '先创建任务草稿，再尝试以最小扰动安排；应用方案前不会改写当前计划。',
+      type: 'new-task-insertion', action: 'insert', title: tr('ac.023', { title: assignment.title }),
+      description: tr('ac.024'),
       affectedGoalIds: inheritedGoalIds, affectedGroupIds: [group.id], affectedAssignmentIds: [assignment.id],
       affectedDates: assignment.scheduledDate ? [assignment.scheduledDate] : [], metadata: { schedulingIntent: draft.schedulingIntent, numberingChoice: draft.numberingChoice },
     })
@@ -786,8 +787,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     })
     const event = planEvent({
-      type: 'new-task-insertion', action: 'insert', title: `创建任务组：${group.title}`,
-      description: `已生成 ${assignments.length} 项任务草稿；将先尝试零扰动插入，再按需扩大范围。`,
+      type: 'new-task-insertion', action: 'insert', title: tr('ac.025', { title: group.title }),
+      description: tr('ac.026', { length: assignments.length }),
       affectedGoalIds: draft.goalIds, affectedGroupIds: [group.id], affectedAssignmentIds: assignments.map(item => item.id), affectedDates: [],
     })
     next.changeEvents = [...next.changeEvents, event].slice(-100)
@@ -823,7 +824,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }))
       draft.intakeBatches.push({
         id,
-        name: `${source.name}（副本）`,
+        name: tr('ac.027', { name: source.name }),
         status: 'editing',
         source: source.source,
         taskGroups,
@@ -925,10 +926,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const batch = next.intakeBatches.find(item => item.id === batchId)
-    if (!batch) throw new Error('录入批次不存在，无法生成计划。')
+    if (!batch) throw new Error(tr('ac.028'))
     const selectedIds = itemIds?.length ? new Set(itemIds) : undefined
     const selected = batch.taskGroups.filter(item => !item.appliedAt && (!selectedIds || selectedIds.has(item.id)))
-    if (!selected.length) throw new Error('这个录入批次中没有可安排的任务。')
+    if (!selected.length) throw new Error(tr('ac.029'))
 
     const now = nowISO()
     const createdAssignmentIds: string[] = []
@@ -941,12 +942,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     for (const entry of preparedGroups) {
       const requestedTitles = (entry.item.prerequisiteGroupTitles ?? []).map(title => title.trim()).filter(Boolean)
       const unknownTitles = requestedTitles.filter(title => !titleLookup.has(title.toLowerCase()))
-      if (unknownTitles.length) throw new Error(`任务组“${entry.group.title}”引用了不存在的前置任务组：${unknownTitles.join('、')}。请先修正名称或先录入对应任务组。`)
+      if (unknownTitles.length) throw new Error(tr('ac.030', { title: entry.group.title, v: unknownTitles.join('、') }))
       const namedDependencies = requestedTitles.map(title => titleLookup.get(title.toLowerCase())).filter((id): id is string => Boolean(id))
       entry.group.prerequisiteGroupIds = Array.from(new Set([...(entry.group.prerequisiteGroupIds ?? []), ...namedDependencies])).filter(id => id !== entry.group.id)
     }
     const dependencyCycles = dependencyCycleLabels([...next.taskGroups, ...preparedGroups.map(entry => entry.group)])
-    if (dependencyCycles.length) throw new Error(`检测到循环依赖：${dependencyCycles[0]}。请先修改前置任务组。`)
+    if (dependencyCycles.length) throw new Error(tr('ac.031', { v: dependencyCycles[0] }))
     for (const { item, group } of preparedGroups) {
       const assignments = createAssignmentsForGroup(group).map(assignment => ({
         ...assignment,
@@ -977,7 +978,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const declaredLatest = item.latestDate ?? item.desiredDate
       if (declaredLatest) {
         const desiredDate = item.desiredDate && item.desiredDate <= declaredLatest ? item.desiredDate : undefined
-        const goalTitle = item.goalTitle?.trim() || `${item.title}完成目标`
+        const goalTitle = item.goalTitle?.trim() || tr('ac.032', { title: item.title })
         const existingGoal = next.goals.find(goal => goal.status !== 'archived' && goal.title === goalTitle && goal.latestDate === declaredLatest)
         if (existingGoal) {
           existingGoal.linkedTaskGroupIds = Array.from(new Set([...existingGoal.linkedTaskGroupIds, group.id]))
@@ -991,7 +992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           next.goals.push({
             id: goalId,
             title: goalTitle,
-            description: `由录入批次“${batch.name}”创建。`,
+            description: tr('ac.033', { name: batch.name }),
             priority: item.priority,
             desiredDate,
             latestDate: declaredLatest,
@@ -1017,8 +1018,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const event = planEvent({
       type: 'new-task-insertion',
       action: 'insert',
-      title: `安排录入批次：${batch.name}`,
-      description: `本次统一加入 ${selected.length} 项录入内容，共生成 ${createdAssignmentIds.length} 项任务；确认方案前不会改变正式计划。`,
+      title: tr('ac.034', { name: batch.name }),
+      description: tr('ac.035', { length: selected.length, length2: createdAssignmentIds.length }),
       affectedGoalIds: [...affectedGoalIds],
       affectedGroupIds: createdGroupIds,
       affectedAssignmentIds: createdAssignmentIds,
@@ -1034,7 +1035,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const index = next.taskGroups.findIndex(item => item.id === group.id)
-    if (index < 0) throw new Error('任务组不存在，无法生成调整预览。')
+    if (index < 0) throw new Error(tr('ac.036'))
     const old = next.taskGroups[index]
     const existing = next.assignments.filter(item => item.groupId === group.id).sort((a, b) => a.index - b.index)
     const now = nowISO()
@@ -1104,18 +1105,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const type: PlanChangeEvent['type'] = createdIds.length ? 'task-group-size-increase' : 'rule-change'
     const action: PlanChangeEvent['action'] = createdIds.length ? 'insert' : 'repair'
     const descriptionParts = [
-      createdIds.length ? `仅新增 ${createdIds.length} 项缺失任务，已有任务保持原位优先。` : '',
-      removedIds.length ? `预览移除 ${removedIds.length} 项尚未开始且无记录的任务。` : '',
-      protectedIds.length ? `${protectedIds.length} 项因已完成、已开始、有实际用时、锁定或正在计时而保留。` : '',
-      changedRules ? '共享规则发生变化，先重新评估风险，不会静默改写排期。' : '任务组信息发生变化。',
+      createdIds.length ? tr('ac.037', { length: createdIds.length }) : '',
+      removedIds.length ? tr('ac.038', { length: removedIds.length }) : '',
+      protectedIds.length ? tr('ac.039', { length: protectedIds.length }) : '',
+      changedRules ? tr('ac.040') : tr('ac.041'),
     ].filter(Boolean)
     const affectedIds = createdIds.length ? createdIds : next.assignments.filter(item => item.groupId === group.id && item.status !== 'done').map(item => item.id)
     const event = planEvent({
-      type, action, title: `调整任务组：${updatedGroup.title}`, description: descriptionParts.join(''),
+      type, action, title: tr('ac.042', { title: updatedGroup.title }), description: descriptionParts.join(''),
       affectedGoalIds: next.goals.filter(goal => goal.linkedTaskGroupIds.includes(group.id) || goal.completionConditions.some(condition => condition.groupId === group.id)).map(goal => goal.id),
       affectedGroupIds: [group.id], affectedAssignmentIds: affectedIds,
       affectedDates: [...new Set(next.assignments.filter(item => affectedIds.includes(item.id)).map(item => item.scheduledDate).filter((date): date is string => Boolean(date)))],
-      metadata: { createdIds, removedIds, protectedIds, previousQuantity: existing.length, requestedQuantity, numberingChoice: firstExpansion ? numberingChoice : undefined, explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: createdIds.length ? `仅保存任务组调整并新增 ${createdIds.length} 项任务` : '仅保存任务组调整' },
+      metadata: { createdIds, removedIds, protectedIds, previousQuantity: existing.length, requestedQuantity, numberingChoice: firstExpansion ? numberingChoice : undefined, explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: createdIds.length ? tr('ac.043', { length: createdIds.length }) : tr('ac.044') },
     })
     next.changeEvents = [...next.changeEvents, event].slice(-100)
     next.updatedAt = now
@@ -1129,7 +1130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const existing = goalId ? next.goals.find(item => item.id === goalId) : undefined
     const latestDate = draft.latestDate
     const goal: Goal = {
-      id: existing?.id ?? uid('goal'), title: draft.title.trim() || '未命名目标', description: draft.description, priority: draft.priority,
+      id: existing?.id ?? uid('goal'), title: draft.title.trim() || tr('ac.045'), description: draft.description, priority: draft.priority,
       desiredDate: draft.desiredDate ? (draft.desiredDate <= latestDate ? draft.desiredDate : latestDate) : undefined,
       latestDate, status: existing?.status === 'archived' ? 'archived' : 'active',
       completionConditions: draft.completionConditions,
@@ -1148,8 +1149,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const nextCountedIds = goalProgress(next, goal).countedAssignmentIds
     const affectedAssignmentIds = Array.from(new Set([...previousCountedIds, ...nextCountedIds]))
     const event = planEvent({
-      type, action: type === 'goal-relaxation' ? 'optimize' : 'repair', title: `${existing ? '调整' : '创建'}目标：${goal.title}`,
-      description: '目标本身先进入草稿状态；日历日期只有在用户应用候选方案后才会改变。',
+      type, action: type === 'goal-relaxation' ? 'optimize' : 'repair', title: tr('ac.048', { v: existing ? tr('ac.046') : tr('ac.047'), title: goal.title }),
+      description: tr('ac.049'),
       affectedGoalIds: [goal.id], affectedGroupIds: goal.linkedTaskGroupIds,
       affectedAssignmentIds,
       affectedDates: [existing?.desiredDate, existing?.latestDate, goal.desiredDate, goal.latestDate].filter((date): date is string => Boolean(date)),
@@ -1163,15 +1164,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const goal = next.goals.find(item => item.id === goalId)
-    if (!goal) return { state: next, event: planEvent({ type: 'goal-deletion', action: 'repair', title: '删除目标', description: '未找到目标。', affectedGoalIds: [], affectedGroupIds: [], affectedAssignmentIds: [], affectedDates: [] }) }
+    if (!goal) return { state: next, event: planEvent({ type: 'goal-deletion', action: 'repair', title: tr('ac.050'), description: tr('ac.051'), affectedGoalIds: [], affectedGroupIds: [], affectedAssignmentIds: [], affectedDates: [] }) }
     next.goals = next.goals.filter(item => item.id !== goalId)
     const event = planEvent({
-      type: 'goal-deletion', action: 'optimize', title: `删除目标：${goal.title}`,
-      description: '删除目标不会自动把任务推迟；可选择保持当前排期或利用释放的空间减负。',
+      type: 'goal-deletion', action: 'optimize', title: tr('ac.052', { title: goal.title }),
+      description: tr('ac.053'),
       affectedGoalIds: [goal.id], affectedGroupIds: goal.linkedTaskGroupIds,
       affectedAssignmentIds: goalProgress(before, goal).countedAssignmentIds,
       affectedDates: [goal.desiredDate, goal.latestDate].filter((date): date is string => Boolean(date)),
-      metadata: { explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: `仅删除目标“${goal.title}”` },
+      metadata: { explicitLocalOperation: true, operationScope: 'requested-change-only', requestedChangeLabel: tr('ac.054', { title: goal.title }) },
     })
     next.changeEvents = [...next.changeEvents, event].slice(-100)
     next.updatedAt = nowISO()
@@ -1191,13 +1192,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const before = stateRef.current
     const next = cloneActiveState(before)
     const now = nowISO()
-    let title = '调整日期可用性'
+    let title = tr('ac.055')
     let previousConstraint: CalendarConstraint | undefined
     let nextConstraint: CalendarConstraint | undefined
 
     if (removeId) {
       previousConstraint = next.calendarConstraints.find(item => item.id === removeId)
-      if (previousConstraint) title = `移除日期约束：${previousConstraint.reason ?? previousConstraint.startDate}`
+      if (previousConstraint) title = tr('ac.056', { v: previousConstraint.reason ?? previousConstraint.startDate })
       next.calendarConstraints = next.calendarConstraints.filter(item => item.id !== removeId)
     } else if (constraint) {
       nextConstraint = { ...constraint, endDate: constraint.endDate || constraint.startDate, updatedAt: now, createdAt: constraint.createdAt || now }
@@ -1206,7 +1207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         previousConstraint = next.calendarConstraints[index]
         next.calendarConstraints[index] = nextConstraint
       } else next.calendarConstraints.push(nextConstraint)
-      title = `${index >= 0 ? '修改' : '添加'}日期约束：${nextConstraint.reason ?? nextConstraint.startDate}`
+      title = tr('ac.059', { v: index >= 0 ? tr('ac.057') : tr('ac.058'), v2: nextConstraint.reason ?? nextConstraint.startDate })
     }
 
     // Editing a range must re-evaluate both the dates released by the old range and the dates
@@ -1235,13 +1236,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       || goal.completionConditions.some(condition => condition.groupId === item.groupId)
     )).map(goal => goal.id)
     const changeText = pureRelaxation
-      ? '可用容量增加；不会自动把任务提前，可保持当前排期或预览如何利用新增空间减负。'
+      ? tr('ac.060')
       : hasDecrease
-        ? '可用容量减少或日期受到保护；受影响任务将先做完整校验，不会删除或直接改写日历。'
-        : '日期规则发生变化；系统会重新检查相关任务，但不直接改写日历。'
+        ? tr('ac.061')
+        : tr('ac.062')
     const event = planEvent({
       type: 'availability-change', action: pureRelaxation ? 'optimize' : 'repair', title,
-      description: `${changeText} 当前识别 ${affectedAssignments.length} 项相关未完成/已安排任务。`,
+      description: tr('ac.063', { changeText, length: affectedAssignments.length }),
       affectedGoalIds: affectedGoals,
       affectedGroupIds: affectedGroups,
       affectedAssignmentIds: affectedAssignments.map(item => item.id),
@@ -1278,8 +1279,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       item.updatedAt = now
     }
     const event = planEvent({
-      type: 'rule-change', action: 'optimize', title: `调整预计时长：${group?.title ?? suggestion.groupId}`,
-      description: `当前默认 ${suggestion.currentEstimate} 分钟，最近 ${suggestion.sampleCount} 个有效样本平均 ${Math.round(suggestion.recentAverage)} 分钟。预计时长先进入草稿，不会自动移动日历。`,
+      type: 'rule-change', action: 'optimize', title: tr('ac.064', { v: group?.title ?? suggestion.groupId }),
+      description: tr('ac.065', { currentEstimate: suggestion.currentEstimate, sampleCount: suggestion.sampleCount, v: Math.round(suggestion.recentAverage) }),
       affectedGoalIds: next.goals.filter(goal => goal.linkedTaskGroupIds.includes(suggestion.groupId) || goal.completionConditions.some(condition => condition.groupId === suggestion.groupId)).map(goal => goal.id),
       affectedGroupIds: [suggestion.groupId], affectedAssignmentIds: suggestion.eligibleAssignmentIds,
       affectedDates: next.assignments.filter(item => eligible.has(item.id) && item.scheduledDate).map(item => item.scheduledDate!).filter((value, index, values) => values.indexOf(value) === index),
@@ -1314,10 +1315,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const groupIds = Array.from(new Set(next.assignments.filter(item => movedIds.includes(item.id)).map(item => item.groupId)))
     const goalIds = next.goals.filter(goal => goal.linkedAssignmentIds.some(id => movedIds.includes(id)) || goal.linkedTaskGroupIds.some(id => groupIds.includes(id)) || goal.completionConditions.some(condition => groupIds.includes(condition.groupId))).map(goal => goal.id)
     const event = planEvent({
-      type: 'execution-difference', action: 'repair', title: `完成 ${date} 复盘并处理未完成任务`,
+      type: 'execution-difference', action: 'repair', title: tr('ac.066', { date }),
       description: movedIds.length
-        ? `复盘记录已进入草稿；用户选择顺延 ${movedIds.length} 项任务。系统会把组合后的容量、每日上限、目标期限与日期保护一起校验，应用前不会修改正式计划。`
-        : '复盘记录已进入草稿，没有选择顺延任务。',
+        ? tr('ac.067', { length: movedIds.length })
+        : tr('ac.068'),
       affectedGoalIds: goalIds, affectedGroupIds: groupIds, affectedAssignmentIds: movedIds, affectedDates: [...affectedDates].sort(),
       metadata: { reviewDate: date, reviewRecordId: record.id, containsReviewRecord: true, reviewCarryover: movedIds.length > 0, requestedCarryDates: carryDates, preferredPreferences: ['preserve', 'balanced', 'goal', 'rest'] },
     })
@@ -1356,7 +1357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return updateGoalAndGroupLifecycle(next)
   }), [])
 
-  const applyPreparedWithoutScheduling = useCallback((preparedState: AppState, event: PlanChangeEvent, reason = '保留为未安排任务') => setState(previous => {
+  const applyPreparedWithoutScheduling = useCallback((preparedState: AppState, event: PlanChangeEvent, reason = tr('ac.069')) => setState(previous => {
     if (guidedTutorialMutationBlocked(namespaceRef.current)) return previous
     if (namespaceRef.current === TUTORIAL_NAMESPACE && !tutorialAllowsCommit(readTutorialSession())) return previous
     history.current = [...history.current.slice(-29), previous]
@@ -1395,7 +1396,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     history.current = [...history.current.slice(-29), previous]
     try {
       const restored = restoreSnapshotState(previous, entry.snapshot)
-      const event = planEvent({ type: 'restore', action: 'repair', title: `恢复旧调整记录：${entry.label}`, description: '恢复前已保存当前计划，所有实际执行记录和后来已执行的任务都会保留。', affectedGoalIds: [], affectedGroupIds: [], affectedAssignmentIds: [], affectedDates: [] })
+      const event = planEvent({ type: 'restore', action: 'repair', title: tr('ac.070', { label: entry.label }), description: tr('ac.071'), affectedGoalIds: [], affectedGroupIds: [], affectedAssignmentIds: [], affectedDates: [] })
       restored.replanHistory = previous.replanHistory
       restored.planVersions = [...previous.planVersions, createPlanVersion(previous, restored, event, event.title)].slice(-10)
       restored.updatedAt = nowISO()
@@ -1439,8 +1440,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     history.current = [...history.current.slice(-29), previous]
     try {
       const restored = restoreVersionState(previous, version, side)
-      const event = planEvent({ type: 'restore', action: 'repair', title: `恢复计划版本：${version.reason}`, description: '恢复前已保存当前计划；实际学习记录不会被旧快照覆盖。', affectedGoalIds: version.affectedGoalIds, affectedGroupIds: version.affectedGroupIds, affectedAssignmentIds: version.affectedAssignmentIds, affectedDates: version.affectedDates })
-      const beforeRestoreVersion: PlanVersion = createPlanVersion(previous, previous, event, `恢复前自动保存 · ${version.reason}`)
+      const event = planEvent({ type: 'restore', action: 'repair', title: tr('ac.072', { reason: version.reason }), description: tr('ac.073'), affectedGoalIds: version.affectedGoalIds, affectedGroupIds: version.affectedGroupIds, affectedAssignmentIds: version.affectedAssignmentIds, affectedDates: version.affectedDates })
+      const beforeRestoreVersion: PlanVersion = createPlanVersion(previous, previous, event, tr('ac.074', { reason: version.reason }))
       restored.planVersions = [...previous.planVersions, beforeRestoreVersion].slice(-10)
       restored.changeEvents = [...previous.changeEvents, event].slice(-100)
       restored.updatedAt = nowISO()

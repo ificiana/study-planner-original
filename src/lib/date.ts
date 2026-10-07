@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import { addDays, eachDayOfInterval, format, isAfter, isBefore, parseISO } from 'date-fns'
 import type { AppState, DayConfig, DayType } from '../types'
 
@@ -21,17 +22,17 @@ export const todayISO = () => format(nowDate(), 'yyyy-MM-dd')
  * noon keeps that date stable across local time zones and around midnight.
  */
 export const timestampForDate = (date: string) => `${date}T12:00:00.000Z`
-export const fmtDate = (date: string, pattern = 'M月d日') => format(parseISO(date), pattern)
-export const fmtWeekday = (date: string) => ['周日','周一','周二','周三','周四','周五','周六'][parseISO(date).getDay()]
+export const fmtDate = (date: string, pattern = tr('dt.001')) => format(parseISO(date), pattern)
+export const fmtWeekday = (date: string) => [tr('dt.002'),tr('dt.003'),tr('dt.004'),tr('dt.005'),tr('dt.006'),tr('dt.007'),tr('dt.008')][parseISO(date).getDay()]
 export const dateRange = (start: string, end: string) => eachDayOfInterval({ start: parseISO(start), end: parseISO(end) }).map(d => format(d, 'yyyy-MM-dd'))
 export const shiftDate = (date: string, amount: number) => format(addDays(parseISO(date), amount), 'yyyy-MM-dd')
 export const clampDate = (date: string, start: string, end: string) => isBefore(parseISO(date), parseISO(start)) ? start : isAfter(parseISO(date), parseISO(end)) ? end : date
 
 export const dayTypeLabel: Record<DayType, string> = {
-  regular: '常规日',
-  study: '学习日',
-  travel: '旅游日',
-  custom: '自定义'
+  get regular() { return tr('dt.009') },
+  get study() { return tr('dt.010') },
+  get travel() { return tr('dt.011') },
+  get custom() { return tr('dt.012') }
 }
 
 export function getDayConfig(state: AppState, date: string): DayConfig {
@@ -71,7 +72,7 @@ export function minutesText(minutes: number): string {
   const rounded = Math.max(0, Math.round(minutes))
   const h = Math.floor(rounded / 60)
   const m = rounded % 60
-  if (!h) return `${m}分钟`
-  if (!m) return `${h}小时`
-  return `${h}小时${m}分钟`
+  if (!h) return tr('dt.013', { m })
+  if (!m) return tr('dt.014', { h })
+  return tr('dt.015', { h, m })
 }

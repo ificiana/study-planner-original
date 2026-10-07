@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import { z } from 'zod'
 import type { AppState } from '../types'
 
@@ -19,7 +20,7 @@ const settingsSchema = z.object({
   subjectShareLimit: z.number(), highLoadThreshold: z.number(), highLoadStreak: z.number(), keepOfflineOnLogout: z.boolean(),
   targetUtilization: z.number(), nearFullThreshold: z.number(), bufferUtilization: z.number(), localRepairRadius: z.number(),
   maxNewTasksPerDay: z.number(), maxLoadChangeRatio: z.number(), customSubjects: z.array(z.string()), duration: durationSettingsSchema,
-  longTaskThresholdMinutes: z.number(), longTaskMaxPerDay: z.number(), longTaskMaxPerDayLight: z.number(),
+  longTaskThresholdMinutes: z.number(), longTaskMaxPerDay: z.number(), longTaskMaxPerDayLight: z.number(), language: z.enum(['zh', 'en']),
   setupProgress: z.object({ currentStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(), availabilityConfirmed: z.boolean().optional() }).partial().strict().optional(),
 }).partial().strict()
 
@@ -140,7 +141,7 @@ export const appStateIngressSchema = z.object({
   dailyPlanBaselines: z.array(baselineSchema).optional(), guestModified: z.boolean().optional(), lastCloudSyncAt: z.string().optional(), templateKind: z.enum(['summer', 'demo', 'blank']).optional(),
   conflictBackups: z.array(z.string()).optional(), replanHistory: z.array(replanHistorySchema).optional(), planVersions: z.array(planVersionSchema).optional(),
 }).strict().superRefine((value, context) => {
-  if (value.version === undefined && value.schemaVersion === undefined) context.addIssue({ code: 'custom', message: '缺少数据版本号' })
+  if (value.version === undefined && value.schemaVersion === undefined) context.addIssue({ code: 'custom', message: tr('ss.001') })
 })
 
 export type StateInputSource = 'indexeddb' | 'json' | 'cloud' | 'snapshot'
@@ -163,7 +164,7 @@ export function validateStateInput(raw: unknown, source: StateInputSource): Stat
     success: false,
     source,
     rawBackup: stableBackup(raw),
-    issues: parsed.error.issues.slice(0, 20).map(issue => `${issue.path.join('.') || '根节点'}：${issue.message}`),
+    issues: parsed.error.issues.slice(0, 20).map(issue => `${issue.path.join('.') || tr('ss.002')}：${issue.message}`),
   }
   return { success: true, source, data: parsed.data as AppState, issues: [], rawBackup: stableBackup(raw) }
 }

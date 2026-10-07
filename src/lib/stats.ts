@@ -1,6 +1,7 @@
 import type { Assignment, DailyPlanBaseline, TaskGroup, TimeEntry } from '../types'
 import { nowDate } from './date'
 import { assignmentStateAtDate, isInferredTimeEntry, timeEntryDate } from './execution'
+import { translate, type Language } from './i18n'
 
 type EntrySource = NonNullable<TimeEntry['source']> | 'legacy'
 
@@ -21,10 +22,10 @@ function dateRangeLocal(start: string, end: string) {
   return result
 }
 
-function dailyLabel(date: string) {
+function dailyLabel(date: string, language: Language = 'zh') {
   const parsed = new Date(`${date}T00:00:00Z`)
-  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  return `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日 · ${weekdays[parsed.getUTCDay()]}`
+  const weekday = translate(language, `stats.weekday.${parsed.getUTCDay()}`)
+  return translate(language, 'stats.dateLabel', { month: Number(date.slice(5, 7)), day: Number(date.slice(8, 10)), weekday })
 }
 
 export interface DailyRow {
@@ -85,13 +86,14 @@ export function aggregateDaily(
   countWordsTime: boolean,
   start: string,
   end: string,
-  baselines: DailyPlanBaseline[] = []
+  baselines: DailyPlanBaseline[] = [],
+  language: Language = 'zh'
 ): DailyRow[] {
   const rows = new Map<string, DailyRow>()
   for (const date of dateRangeLocal(start, end)) {
     rows.set(date, {
       date,
-      label: dailyLabel(date),
+      label: dailyLabel(date, language),
       shortLabel: date.slice(5).replace('-', '.'),
       planned: 0,
       actual: 0,

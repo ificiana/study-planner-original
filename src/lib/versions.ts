@@ -2,6 +2,7 @@ import type { AppState, PlanChangeEvent, PlanVersion, SchedulingProposal } from 
 import { uid } from './id'
 import { portableState } from './state'
 import { normalizeState } from './seed'
+import { translate, type Language } from './i18n'
 
 function affectedDates(before: AppState, after: AppState): string[] {
   const dates = new Set<string>()
@@ -127,7 +128,7 @@ export interface VersionDiffSummary {
   goalChanges: Array<{ id: string; title: string; before?: string; after?: string }>
 }
 
-export function previewVersionDiff(current: AppState, version: PlanVersion, side: 'before' | 'after' = 'after'): VersionDiffSummary {
+export function previewVersionDiff(current: AppState, version: PlanVersion, side: 'before' | 'after' = 'after', language: Language = 'zh'): VersionDiffSummary {
   const target = normalizeState({
     ...(JSON.parse(side === 'after' ? version.afterState : version.beforeState) as AppState),
     replanHistory: [], conflictBackups: [], planVersions: [],
@@ -143,9 +144,10 @@ export function previewVersionDiff(current: AppState, version: PlanVersion, side
   const currentGoals = new Map(current.goals.map(goal => [goal.id, goal]))
   const goalChanges: VersionDiffSummary['goalChanges'] = target.goals.flatMap<VersionDiffSummary['goalChanges'][number]>(goal => {
     const before = currentGoals.get(goal.id)
-    if (!before) return [{ id: goal.id, title: goal.title, before: undefined, after: `${goal.desiredDate ?? '无希望日期'} / ${goal.latestDate}` }]
-    const oldText = `${before.desiredDate ?? '无希望日期'} / ${before.latestDate}`
-    const newText = `${goal.desiredDate ?? '无希望日期'} / ${goal.latestDate}`
+    const noDesiredDate = translate(language, 'versions.noDesiredDate')
+    if (!before) return [{ id: goal.id, title: goal.title, before: undefined, after: `${goal.desiredDate ?? noDesiredDate} / ${goal.latestDate}` }]
+    const oldText = `${before.desiredDate ?? noDesiredDate} / ${before.latestDate}`
+    const newText = `${goal.desiredDate ?? noDesiredDate} / ${goal.latestDate}`
     return oldText === newText ? [] : [{ id: goal.id, title: goal.title, before: oldText, after: newText }]
   })
   return { moved, added, removed, goalChanges }

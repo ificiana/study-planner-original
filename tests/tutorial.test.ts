@@ -8,7 +8,7 @@ import {
   TUTORIAL_GOAL_ID,
   TUTORIAL_INTAKE_BATCH_ID,
   TUTORIAL_NEW_GOAL_ID,
-  TUTORIAL_NEW_GOAL_TITLE,
+  tutorialNewGoalTitle,
   TUTORIAL_PARTIAL_ASSIGNMENT_ID,
   TUTORIAL_STEPS,
   TUTORIAL_UNFINISHED_ASSIGNMENT_ID,
@@ -168,7 +168,7 @@ describe('tutorial v4 flow and checkpoints', () => {
     expect(tasks.goals.some(item => item.id === TUTORIAL_NEW_GOAL_ID)).toBe(false)
 
     const goalLink = buildTutorialCheckpoint('goal-link', anchor)
-    expect(goalLink.goals.find(item => item.id === TUTORIAL_NEW_GOAL_ID)).toMatchObject({ title: TUTORIAL_NEW_GOAL_TITLE, status: 'active' })
+    expect(goalLink.goals.find(item => item.id === TUTORIAL_NEW_GOAL_ID)).toMatchObject({ title: tutorialNewGoalTitle(), status: 'active' })
     expect(goalLink.intakeBatches.find(item => item.id === TUTORIAL_INTAKE_BATCH_ID)?.taskGroups.every(item => item.goalIds.length === 0)).toBe(true)
 
     const linked = buildTutorialCheckpoint('intake-schedule', anchor)

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import type { AppState, Assignment, ReplanHistoryEntry, Subject } from '../types'
 import { dayTypeLabel, fmtDate, fmtWeekday, minutesText } from '../lib/date'
 import { Modal } from './Modal'
+import { useT } from '../lib/i18n'
 
 type Row = { id: string; before?: Assignment; after?: Assignment; kind: 'same' | 'added' | 'removed' | 'modified' }
 
@@ -33,16 +34,18 @@ function rowsFor(before: AppState, after: AppState, date: string): Row[] {
 }
 
 function ReadonlyTask({ state, assignment, kind }: { state: AppState; assignment?: Assignment; kind: Row['kind'] }) {
+  const t = useT()
   if (!assignment) return <div className="diff-empty">—</div>
   const subject = subjectFor(state, assignment)
   const className = kind === 'added' ? 'diff-added' : kind === 'removed' ? 'diff-removed' : kind === 'modified' ? 'diff-modified' : ''
   return <div className={`diff-task ${className}`}>
     <div className="diff-task-main"><span className={`subject-dot subject-${subject}`}/><div><strong>{assignment.title}</strong><span>{subject} · {minutesText(assignment.estimatedMinutes)}</span></div></div>
-    <div className="diff-task-meta">{kind === 'added' && <em>＋新增</em>}{kind === 'removed' && <em>－移除</em>}{kind === 'modified' && <em>≈ 变化</em>}{assignment.locked && <span><Lock size={12}/>锁定</span>}</div>
+    <div className="diff-task-meta">{kind === 'added' && <em>{t('g1.hd.added')}</em>}{kind === 'removed' && <em>{t('g1.hd.removed')}</em>}{kind === 'modified' && <em>{t('g1.hd.modified')}</em>}{assignment.locked && <span><Lock size={12}/>{t('g1.hd.locked')}</span>}</div>
   </div>
 }
 
 export function HistoryDiffDialog({ entry, onClose }: { entry?: ReplanHistoryEntry; onClose: () => void }) {
+  const t = useT()
   const [expanded, setExpanded] = useState<string[]>([])
   const before = useMemo(() => parseState(entry?.snapshot), [entry?.snapshot])
   const after = useMemo(() => parseState(entry?.afterSnapshot), [entry?.afterSnapshot])
@@ -63,13 +66,13 @@ export function HistoryDiffDialog({ entry, onClose }: { entry?: ReplanHistoryEnt
     }).sort()
   }, [before, after])
 
-  return <Modal open={Boolean(entry)} title={entry ? `${entry.label} · 历史差异` : '历史差异'} onClose={onClose} wide mobileFullscreen>
-    {!before || !after ? <p className="muted-text">这条历史来自旧版本，只保存了重排前快照，无法展示完整前后对比。</p> : <>
+  return <Modal open={Boolean(entry)} title={entry ? t('g1.hd.titleWithLabel', { label: entry.label }) : t('g1.hd.title')} onClose={onClose} wide mobileFullscreen>
+    {!before || !after ? <p className="muted-text">{t('g1.hd.legacy')}</p> : <>
       <div className="history-audit-summary">
-        <span>策略：{entry?.audit?.strategy ?? '旧版未记录'}</span>
-        <span>人工决策：{entry?.audit?.decisions.length ?? 0} 项</span>
-        <span>日期类型调整：{entry?.audit?.dayTypes.length ?? 0} 天</span>
-        <span>变化日期：{changedDates.length} 天</span>
+        <span>{t('g1.hd.strategy', { value: entry?.audit?.strategy ?? t('g1.hd.strategyUnrecorded') })}</span>
+        <span>{t('g1.hd.decisions', { n: entry?.audit?.decisions.length ?? 0 })}</span>
+        <span>{t('g1.hd.dayTypes', { n: entry?.audit?.dayTypes.length ?? 0 })}</span>
+        <span>{t('g1.hd.changedDates', { n: changedDates.length })}</span>
       </div>
       <div className="history-diff-list">
         {changedDates.map(date => {
@@ -77,10 +80,10 @@ export function HistoryDiffDialog({ entry, onClose }: { entry?: ReplanHistoryEnt
           const rows = rowsFor(before, after, date)
           return <section className="history-diff-date" key={date}>
             <header onClick={() => setExpanded(previous => open ? previous.filter(item => item !== date) : [...previous, date])}>
-              <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong>{before.dayConfigs[date]?.type !== after.dayConfigs[date]?.type && <small>{dayTypeLabel[before.dayConfigs[date]?.type ?? 'regular']} → {dayTypeLabel[after.dayConfigs[date]?.type ?? 'regular']}</small>}</div><span>{rows.filter(row => row.kind !== 'same').length} 项任务变化 {open ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}</span>
+              <div><strong>{fmtDate(date)} · {fmtWeekday(date)}</strong>{before.dayConfigs[date]?.type !== after.dayConfigs[date]?.type && <small>{dayTypeLabel[before.dayConfigs[date]?.type ?? 'regular']} → {dayTypeLabel[after.dayConfigs[date]?.type ?? 'regular']}</small>}</div><span>{t('g1.hd.taskChanges', { n: rows.filter(row => row.kind !== 'same').length })} {open ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}</span>
             </header>
             {open && <div className="day-diff-panel">
-              <div className="day-diff-heading"><span>重排前</span><span>重排后</span></div>
+              <div className="day-diff-heading"><span>{t('g1.hd.before')}</span><span>{t('g1.hd.after')}</span></div>
               {rows.map(row => <article className={`day-diff-row diff-${row.kind}`} key={`${date}-${row.id}`}><div><ReadonlyTask state={before} assignment={row.before} kind={row.kind === 'removed' ? 'removed' : row.kind}/></div><div><ReadonlyTask state={after} assignment={row.after} kind={row.kind === 'added' ? 'added' : row.kind}/></div></article>)}
             </div>}
           </section>

@@ -86,6 +86,7 @@ export interface AppSettings {
   optionalReview: boolean
   sidebarCollapsed: boolean
   theme: ThemePreference
+  language: 'zh' | 'en'
   notificationsEnabled: boolean
   planningMode: PlanningMode
   freezeDays: number

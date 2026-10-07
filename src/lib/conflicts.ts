@@ -10,6 +10,7 @@ import type {
   SchedulingProposal,
 } from '../types'
 import { cloneActiveState, hydratePortableState } from './state'
+import { translate, tr, type Language } from './i18n'
 
 export interface ConflictProfile {
   category: ConflictCategory
@@ -55,133 +56,136 @@ function normalizedTodayIncomingKey(rawKey: string) {
   return rawKey === 'today-closed' || rawKey === 'today-extra' ? 'today-extra' : rawKey
 }
 
-export function conflictProfile(issue: ProposalIssue): ConflictProfile {
+export function conflictProfile(issue: ProposalIssue, language: Language = 'zh'): ConflictProfile {
+  const tt = (key: string, vars?: Record<string, string | number>) => translate(language, key, vars)
   if (issue.conflictCategory && issue.allowedResolutions?.length) {
     const todayIncoming = isTodayIncomingIssue(issue)
     return {
       category: issue.conflictCategory,
-      label: todayIncoming ? '今天接收规则' : categoryLabel(issue.conflictCategory),
+      label: todayIncoming ? tt('conflict.todayIncoming.label') : categoryLabel(issue.conflictCategory, language),
       description: todayIncoming
-        ? '只对当前列出的任务放宽“未来任务不自动进入今天”的规则，不修改永久设置。'
-        : categoryDescription(issue.conflictCategory),
+        ? tt('conflict.todayIncoming.description')
+        : categoryDescription(issue.conflictCategory, language),
       allowedResolutions: issue.allowedResolutions,
     }
   }
 
   const raw = issue.rawConstraintKey ?? ''
-  if (absoluteTypes.has(issue.type) || issue.title.includes('已完成任务')) {
+  if (absoluteTypes.has(issue.type) || issue.title.includes(tr('cf.001'))) {
     return {
       category: 'absolute-blocker',
-      label: '不能直接豁免',
-      description: '这类限制用于保护真实执行和历史记录，必须保留原状态或取消相关改动。',
+      label: tt('conflict.profile.absoluteBlocker.label'),
+      description: tt('conflict.profile.absoluteBlocker.description'),
       allowedResolutions: ['keep-original', 'cancel-change'],
     }
   }
   if (issue.type === 'task-lock') {
     return {
       category: 'protected-intent',
-      label: '用户保护冲突',
-      description: '任务锁定不能被系统静默绕过；可以保留原安排，或明确解除锁定后重新计算。',
+      label: tt('conflict.profile.taskLock.label'),
+      description: tt('conflict.profile.taskLock.description'),
       allowedResolutions: ['keep-original', 'unlock-and-move', 'cancel-change'],
     }
   }
   if (issue.type === 'date-protection') {
     return {
       category: 'protected-intent',
-      label: '日期保护冲突',
-      description: '可以只对本次方案授权使用该日期，也可以要求系统避开。',
+      label: tt('conflict.profile.dateProtection.label'),
+      description: tt('conflict.profile.dateProtection.description'),
       allowedResolutions: ['accept-once', 'system-find-another-date', 'keep-original'],
     }
   }
   if (issue.type === 'goal-risk' || raw === 'goal-latest') {
     return {
       category: 'structural-conflict',
-      label: '目标或结构冲突',
-      description: '不能只用一个勾选框忽略目标定义；可以继续寻找日期、保留未安排，或返回修改目标。',
+      label: tt('conflict.profile.goalRisk.label'),
+      description: tt('conflict.profile.goalRisk.description'),
       allowedResolutions: ['system-find-another-date', 'leave-unscheduled', 'change-goal', 'cancel-change'],
     }
   }
   if (raw === 'today-closed' || raw === 'today-extra') {
     return {
       category: 'waivable-rule',
-      label: '今天接收规则',
-      description: '只对当前列出的任务放宽“未来任务不自动进入今天”的规则，不修改永久设置。',
+      label: tt('conflict.todayIncoming.label'),
+      description: tt('conflict.todayIncoming.description'),
       allowedResolutions: ['accept-once', 'system-find-another-date', 'keep-original', 'change-capacity'],
     }
   }
   if (issue.type === 'unscheduled') {
     return {
       category: 'structural-conflict',
-      label: '仍有任务未安排',
-      description: '可以继续寻找合法日期，也可以明确保留为未安排任务。',
+      label: tt('conflict.profile.unscheduled.label'),
+      description: tt('conflict.profile.unscheduled.description'),
       allowedResolutions: ['system-find-another-date', 'leave-unscheduled', 'cancel-change'],
     }
   }
   if (raw === 'travel-day' || raw === 'buffer-high-intensity' || raw === 'buffer-long-task' || raw === 'plan-range') {
     return {
       category: 'structural-conflict',
-      label: '需要改变日期或可用性',
-      description: '这类冲突不能用普通上限例外安全绕过，应让系统换日、保留原安排或返回修改可用时间。',
+      label: tt('conflict.profile.availabilityChange.label'),
+      description: tt('conflict.profile.availabilityChange.description'),
       allowedResolutions: ['system-find-another-date', 'keep-original', 'change-capacity', 'cancel-change'],
     }
   }
   if (waivableTypes.has(issue.type)) {
     return {
       category: 'waivable-rule',
-      label: '可一次性放宽',
-      description: '可以只对本次方案按最小范围授权，也可以坚持原规则并让系统重新安排。',
+      label: tt('conflict.profile.waivable.label'),
+      description: tt('conflict.profile.waivable.description'),
       allowedResolutions: ['accept-once', 'system-find-another-date', 'leave-unscheduled'],
     }
   }
   return {
     category: 'warning',
-    label: '需要确认的影响',
-    description: '这项影响不会被静默忽略；可保留原安排或让系统重新寻找方案。',
+    label: tt('conflict.profile.default.label'),
+    description: tt('conflict.profile.default.description'),
     allowedResolutions: ['keep-original', 'system-find-another-date', 'cancel-change'],
   }
 }
 
-export function categoryLabel(category: ConflictCategory) {
-  return category === 'absolute-blocker' ? '绝对阻断'
-    : category === 'protected-intent' ? '用户保护'
-      : category === 'waivable-rule' ? '可一次性例外'
-        : category === 'structural-conflict' ? '目标或结构'
-          : '提醒'
+export function categoryLabel(category: ConflictCategory, language: Language = 'zh') {
+  const key = category === 'absolute-blocker' ? 'conflict.category.absoluteBlocker'
+    : category === 'protected-intent' ? 'conflict.category.protectedIntent'
+      : category === 'waivable-rule' ? 'conflict.category.waivableRule'
+        : category === 'structural-conflict' ? 'conflict.category.structuralConflict'
+          : 'conflict.category.warning'
+  return translate(language, key)
 }
 
-function categoryDescription(category: ConflictCategory) {
-  return category === 'absolute-blocker' ? '保护执行历史，不能直接豁免。'
-    : category === 'protected-intent' ? '必须由用户明确决定是否解除或本次授权。'
-      : category === 'waivable-rule' ? '可逐项接受一次性例外，且不会修改永久规则。'
-        : category === 'structural-conflict' ? '需要换日、留空或修改目标/容量。'
-          : '可以继续，但应理解影响。'
+function categoryDescription(category: ConflictCategory, language: Language = 'zh') {
+  const key = category === 'absolute-blocker' ? 'conflict.categoryDesc.absoluteBlocker'
+    : category === 'protected-intent' ? 'conflict.categoryDesc.protectedIntent'
+      : category === 'waivable-rule' ? 'conflict.categoryDesc.waivableRule'
+        : category === 'structural-conflict' ? 'conflict.categoryDesc.structuralConflict'
+          : 'conflict.categoryDesc.warning'
+  return translate(language, key)
 }
 
-export function resolutionLabel(action: ConflictResolutionAction, issue?: ProposalIssue) {
+export function resolutionLabel(action: ConflictResolutionAction, issue?: ProposalIssue, language: Language = 'zh') {
   if (isTodayIncomingIssue(issue)) {
     const todayLabels: Partial<Record<ConflictResolutionAction, string>> = {
-      'accept-once': '允许这些任务今天加入',
-      'system-find-another-date': '让系统为这些任务找其他日期',
-      'keep-original': '保留这些任务原来的日期',
-      'change-capacity': '调整今天的可用时间',
+      'accept-once': translate(language, 'conflict.resolution.today.acceptOnce'),
+      'system-find-another-date': translate(language, 'conflict.resolution.today.systemFindAnotherDate'),
+      'keep-original': translate(language, 'conflict.resolution.today.keepOriginal'),
+      'change-capacity': translate(language, 'conflict.resolution.today.changeCapacity'),
     }
     return todayLabels[action] ?? action
   }
   const labels: Record<ConflictResolutionAction, string> = {
-    'accept-once': '接受本次例外',
-    'system-find-another-date': '让系统仅为这些任务换日',
-    'keep-original': '恢复这些任务原来的日期',
-    'leave-unscheduled': '暂不安排这些任务',
-    'unlock-and-move': '解除锁定后重新计算',
-    'change-goal': '修改相关目标',
-    'change-capacity': '修改相关日期的可用时间',
-    'cancel-change': '放弃本次对这些任务的调整',
+    'accept-once': translate(language, 'conflict.resolution.acceptOnce'),
+    'system-find-another-date': translate(language, 'conflict.resolution.systemFindAnotherDate'),
+    'keep-original': translate(language, 'conflict.resolution.keepOriginal'),
+    'leave-unscheduled': translate(language, 'conflict.resolution.leaveUnscheduled'),
+    'unlock-and-move': translate(language, 'conflict.resolution.unlockAndMove'),
+    'change-goal': translate(language, 'conflict.resolution.changeGoal'),
+    'change-capacity': translate(language, 'conflict.resolution.changeCapacity'),
+    'cancel-change': translate(language, 'conflict.resolution.cancelChange'),
   }
   return labels[action]
 }
 
-export function exceptionFromIssue(issue: ProposalIssue): ConstraintException | undefined {
-  const profile = conflictProfile(issue)
+export function exceptionFromIssue(issue: ProposalIssue, language: Language = 'zh'): ConstraintException | undefined {
+  const profile = conflictProfile(issue, language)
   const rawKey = normalizedTodayIncomingKey(issue.rawConstraintKey ?? rawKeyFromIssue(issue))
   const todayIncoming = rawKey === 'today-extra'
   const protectedDate = issue.type === 'date-protection' || rawKey === 'date-protection' || rawKey === 'protected-buffer' || rawKey === 'source-date-protection'
@@ -200,10 +204,14 @@ export function exceptionFromIssue(issue: ProposalIssue): ConstraintException | 
               : 'capacity',
     rawKey,
     label: todayIncoming
-      ? `${issue.title}：仅本次允许列出的任务进入今天，不修改今天的默认设置`
+      ? translate(language, 'conflict.exception.todayIncoming', { title: issue.title })
       : protectedDate
-      ? `${issue.title}：仅本次允许涉及任务使用该日期`
-      : `${issue.title}：本次由 ${Math.round(allowed ?? 0)} 放宽到 ${Math.round(issue.suggestedLimit ?? current ?? 0)}`,
+      ? translate(language, 'conflict.exception.protectedDate', { title: issue.title })
+      : translate(language, 'conflict.exception.relaxedLimit', {
+          title: issue.title,
+          from: Math.round(allowed ?? 0),
+          to: Math.round(issue.suggestedLimit ?? current ?? 0),
+        }),
     permanent: false,
     currentLimit: protectedDate ? undefined : allowed,
     overrideLimit: protectedDate || todayIncoming ? undefined : issue.suggestedLimit ?? current,

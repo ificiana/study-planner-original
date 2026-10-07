@@ -1,3 +1,4 @@
+import { displayPlanName, getActiveLanguage, tr } from './i18n'
 import type { AppState, Assignment, TaskGroup } from '../types'
 import { dateRange, dayTypeLabel, fmtDate, fmtWeekday, getCapacity, getDayConfig, minutesText, shiftDate, todayISO } from './date'
 import { aggregateDaily } from './stats'
@@ -13,14 +14,14 @@ export interface ExportRange {
 export type TaskTableImageColumn = 'date' | 'task' | 'subject' | 'group' | 'estimated' | 'actual' | 'progress' | 'status'
 
 export const taskTableImageColumnOptions: Array<{ key: TaskTableImageColumn; label: string }> = [
-  { key: 'date', label: '日期' },
-  { key: 'task', label: '任务' },
-  { key: 'subject', label: '科目' },
-  { key: 'group', label: '任务组' },
-  { key: 'estimated', label: '预计分钟' },
-  { key: 'actual', label: '实际分钟' },
-  { key: 'progress', label: '进度' },
-  { key: 'status', label: '状态' },
+  { key: 'date', get label() { return tr('ex.001') } },
+  { key: 'task', get label() { return tr('ex.002') } },
+  { key: 'subject', get label() { return tr('ex.003') } },
+  { key: 'group', get label() { return tr('ex.004') } },
+  { key: 'estimated', get label() { return tr('ex.005') } },
+  { key: 'actual', get label() { return tr('ex.006') } },
+  { key: 'progress', get label() { return tr('ex.007') } },
+  { key: 'status', get label() { return tr('ex.008') } },
 ]
 
 export const defaultTaskTableImageColumns: TaskTableImageColumn[] = ['date', 'task', 'subject', 'estimated', 'status']
@@ -56,9 +57,9 @@ export const defaultStatisticsReportSections: StatisticsReportSections = {
 }
 
 const taskStatusLabel: Record<Assignment['status'], string> = {
-  todo: '未完成',
-  partial: '部分完成',
-  done: '已完成',
+  get todo() { return tr('ex.009') },
+  get partial() { return tr('ex.010') },
+  get done() { return tr('ex.011') },
 }
 
 function csvCell(value: unknown) {
@@ -140,7 +141,7 @@ export function buildCalendarSvg(state: AppState, month: string, options: { show
   const gridWidth = width - margin * 2
   const cellWidth = gridWidth / 7
   const height = margin + headerHeight + weekdayHeight + (rowOffsets[rowOffsets.length - 1] ?? 0) + margin
-  const weekdayLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekdayLabels = [tr('ex.012'), tr('ex.013'), tr('ex.014'), tr('ex.015'), tr('ex.016'), tr('ex.017'), tr('ex.018')]
   const cells: string[] = []
 
   for (let index = 0; index < rowCount * 7; index += 1) {
@@ -162,16 +163,16 @@ export function buildCalendarSvg(state: AppState, month: string, options: { show
     cells.push(`<rect x="${x}" y="${y}" width="${cellWidth}" height="${cellHeight}" fill="${fill}" stroke="${border}" stroke-width="${ratio > .8 ? 2 : 1}"/>`)
     if (!inMonth) continue
     cells.push(`<text x="${x + 15}" y="${y + 28}" font-size="20" font-weight="750" fill="#172033">${dayNumber}</text>`)
-    const typeLabel = config?.isBufferDay ? `缓冲 · ${minutesText(config.availableMinutes ?? capacity)}` : config ? dayTypeLabel[config.type] : '计划外'
+    const typeLabel = config?.isBufferDay ? tr('ex.019', { v: minutesText(config.availableMinutes ?? capacity) }) : config ? dayTypeLabel[config.type] : tr('ex.020')
     cells.push(`<text x="${x + cellWidth - 15}" y="${y + 26}" text-anchor="end" font-size="11" fill="#718096">${xml(typeLabel)}</text>`)
     if (capacity > 0) {
       const barWidth = Math.max(0, cellWidth - 30)
       const visibleWidth = Math.min(barWidth, barWidth * ratio)
       const barColor = ratio > 1 ? '#ef4444' : ratio > .8 ? '#f59e0b' : '#2563eb'
       cells.push(`<rect x="${x + 15}" y="${y + 42}" width="${barWidth}" height="5" rx="2.5" fill="#edf1f5"/><rect x="${x + 15}" y="${y + 42}" width="${visibleWidth}" height="5" rx="2.5" fill="${barColor}"/>`)
-      cells.push(`<text x="${x + 15}" y="${y + 65}" font-size="11" fill="#718096">计划 ${xml(minutesText(load))} / ${xml(minutesText(capacity))}</text>`)
+      cells.push(`<text x="${x + 15}" y="${y + 65}" font-size="11" fill="#718096">${tr('ex.021')} ${xml(minutesText(load))} / ${xml(minutesText(capacity))}</text>`)
     } else {
-      cells.push(`<text x="${x + 15}" y="${y + 65}" font-size="11" fill="#9aa6b6">没有可用容量</text>`)
+      cells.push(`<text x="${x + 15}" y="${y + 65}" font-size="11" fill="#9aa6b6">${tr('ex.022')}</text>`)
     }
     const visibleTasks = showAllTasks ? tasks : tasks.slice(0, 6)
     visibleTasks.forEach((task, taskIndex) => {
@@ -179,9 +180,9 @@ export function buildCalendarSvg(state: AppState, month: string, options: { show
       const taskY = y + 88 + taskIndex * 25
       const color = subjectSvgColors[group?.subject ?? '其他'] ?? subjectSvgColors.其他
       const opacity = task.status === 'done' ? '.52' : '1'
-      cells.push(`<circle cx="${x + 18}" cy="${taskY - 4}" r="4" fill="${color}" opacity="${opacity}"/><text x="${x + 29}" y="${taskY}" font-size="12" fill="#26344b" opacity="${opacity}">${xml(shortText(task.title, 25))}</text><text x="${x + cellWidth - 15}" y="${taskY}" text-anchor="end" font-size="10" fill="#8491a4" opacity="${opacity}">${task.estimatedMinutes}分</text>`)
+      cells.push(`<circle cx="${x + 18}" cy="${taskY - 4}" r="4" fill="${color}" opacity="${opacity}"/><text x="${x + 29}" y="${taskY}" font-size="12" fill="#26344b" opacity="${opacity}">${xml(shortText(task.title, 25))}</text><text x="${x + cellWidth - 15}" y="${taskY}" text-anchor="end" font-size="10" fill="#8491a4" opacity="${opacity}">${task.estimatedMinutes}${tr('ex.023')}</text>`)
     })
-    if (!showAllTasks && tasks.length > visibleTasks.length) cells.push(`<text x="${x + 15}" y="${y + cellHeight - 14}" font-size="10" fill="#2563eb">+${tasks.length - visibleTasks.length} 项，详见明细</text>`)
+    if (!showAllTasks && tasks.length > visibleTasks.length) cells.push(`<text x="${x + 15}" y="${y + cellHeight - 14}" font-size="10" fill="#2563eb">+${tasks.length - visibleTasks.length} ${tr('ex.024')}</text>`)
   }
 
   const weekdays = weekdayLabels.map((label, index) => {
@@ -192,7 +193,7 @@ export function buildCalendarSvg(state: AppState, month: string, options: { show
     const x = margin + index * 105
     return `<circle cx="${x}" cy="${margin + 91}" r="5" fill="${color}"/><text x="${x + 10}" y="${margin + 95}" font-size="11" fill="#68758a">${xml(subject)}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${xml(year)}年${monthNumber}月学习月历"><rect width="100%" height="100%" fill="#ffffff"/><text x="${margin}" y="${margin + 34}" font-size="30" font-weight="800" fill="#172033">${year}年${monthNumber}月学习月历</text><text x="${margin}" y="${margin + 62}" font-size="13" fill="#68758a">${xml(state.settings.planName)} · 计划安排与每日容量</text>${legend}<rect x="${margin}" y="${margin + headerHeight}" width="${gridWidth}" height="${weekdayHeight}" fill="#f8fafc" stroke="#dfe6ef"/>${weekdays}${cells}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${xml(tr('ex.025', { year, month: monthNumber }))}"><rect width="100%" height="100%" fill="#ffffff"/><text x="${margin}" y="${margin + 34}" font-size="30" font-weight="800" fill="#172033">${xml(tr('ex.025', { year, month: monthNumber }))}</text><text x="${margin}" y="${margin + 62}" font-size="13" fill="#68758a">${xml(displayPlanName(state.settings.planName))} ${tr('ex.027')}</text>${legend}<rect x="${margin}" y="${margin + headerHeight}" width="${gridWidth}" height="${weekdayHeight}" fill="#f8fafc" stroke="#dfe6ef"/>${weekdays}${cells}</svg>`
 }
 
 /** Build a compact, shareable task-list image for an arbitrary date range. */
@@ -234,8 +235,8 @@ export function buildTaskTableSvg(state: AppState, range: ExportRange, columns: 
     if (column === 'task') return shortText(assignment.title, maxCharacters)
     if (column === 'subject') return group?.subject ?? '其他'
     if (column === 'group') return shortText(group?.title ?? '', maxCharacters)
-    if (column === 'estimated') return `${assignment.estimatedMinutes} 分`
-    if (column === 'actual') return `${realMinutesInRange(assignment, range)} 分`
+    if (column === 'estimated') return tr('ex.028', { estimatedMinutes: assignment.estimatedMinutes })
+    if (column === 'actual') return tr('ex.029', { v: realMinutesInRange(assignment, range) })
     if (column === 'progress') return `${Math.round(assignment.progress)}%`
     return taskStatusLabel[assignment.status]
   }
@@ -264,9 +265,9 @@ export function buildTaskTableSvg(state: AppState, range: ExportRange, columns: 
       cellX += columnWidth
     })
   })
-  const emptyState = assignments.length ? '' : `<text x="${width / 2}" y="${tableTop + headerHeight + 66}" text-anchor="middle" font-size="16" fill="#7a879a">所选日期范围内没有已排任务</text>`
+  const emptyState = assignments.length ? '' : `<text x="${width / 2}" y="${tableTop + headerHeight + 66}" text-anchor="middle" font-size="16" fill="#7a879a">${tr('ex.030')}</text>`
   const footerY = tableTop + tableHeight + 34
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${xml(range.start)} 至 ${xml(range.end)} 任务清单"><rect width="100%" height="100%" fill="#f5f7fb"/><rect x="${margin}" y="${margin}" width="${contentWidth}" height="${height - margin * 2}" rx="22" fill="#ffffff" stroke="#dfe6ef"/><text x="${margin + 24}" y="${margin + 40}" font-size="28" font-weight="800" fill="#172033">任务清单</text><text x="${margin + 24}" y="${margin + 70}" font-size="13" fill="#68758a">${xml(state.settings.planName)} · ${xml(range.start)} 至 ${xml(range.end)}</text><text x="${margin + contentWidth - 24}" y="${margin + 40}" text-anchor="end" font-size="15" font-weight="750" fill="#2563eb">共 ${assignments.length} 项</text><text x="${margin + contentWidth - 24}" y="${margin + 69}" text-anchor="end" font-size="12" fill="#68758a">已完成 ${completed} · 部分完成 ${partial} · 未完成 ${Math.max(0, assignments.length - completed - partial)}</text><rect x="${margin}" y="${tableTop}" width="${contentWidth}" height="${headerHeight}" fill="#f1f5fa"/>${headerCells.join('')}${bodyCells.join('')}${emptyState}<text x="${margin + 24}" y="${footerY}" font-size="11" fill="#8a97aa">生成于 ${xml(new Date().toLocaleString('zh-CN'))} · 数据仅在本机处理</text></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${xml(range.start)} ${tr('ex.031')} ${xml(range.end)} ${tr('ex.032')}"><rect width="100%" height="100%" fill="#f5f7fb"/><rect x="${margin}" y="${margin}" width="${contentWidth}" height="${height - margin * 2}" rx="22" fill="#ffffff" stroke="#dfe6ef"/><text x="${margin + 24}" y="${margin + 40}" font-size="28" font-weight="800" fill="#172033">${tr('ex.032')}</text><text x="${margin + 24}" y="${margin + 70}" font-size="13" fill="#68758a">${xml(displayPlanName(state.settings.planName))} · ${xml(range.start)} ${tr('ex.031')} ${xml(range.end)}</text><text x="${margin + contentWidth - 24}" y="${margin + 40}" text-anchor="end" font-size="15" font-weight="750" fill="#2563eb">${tr('ex.033')} ${assignments.length} ${tr('ex.034')}</text><text x="${margin + contentWidth - 24}" y="${margin + 69}" text-anchor="end" font-size="12" fill="#68758a">${tr('ex.011')} ${completed} ${tr('ex.035')} ${partial} ${tr('ex.036')} ${Math.max(0, assignments.length - completed - partial)}</text><rect x="${margin}" y="${tableTop}" width="${contentWidth}" height="${headerHeight}" fill="#f1f5fa"/>${headerCells.join('')}${bodyCells.join('')}${emptyState}<text x="${margin + 24}" y="${footerY}" font-size="11" fill="#8a97aa">${tr('ex.037')} ${xml(new Date().toLocaleString('zh-CN'))} ${tr('ex.038')}</text></svg>`
 }
 
 function downloadBlobFile(filename: string, blob: Blob) {
@@ -297,14 +298,14 @@ export function downloadSvgAsPng(filename: string, svg: string) {
         canvas.width = Math.max(1, Math.floor(width * scale))
         canvas.height = Math.max(1, Math.floor(height * scale))
         const context = canvas.getContext('2d')
-        if (!context) throw new Error('当前浏览器不支持图片导出。')
+        if (!context) throw new Error(tr('ex.039'))
         context.fillStyle = '#ffffff'
         context.fillRect(0, 0, canvas.width, canvas.height)
         context.drawImage(image, 0, 0, canvas.width, canvas.height)
         canvas.toBlob(blob => {
           URL.revokeObjectURL(url)
           if (!blob) {
-            reject(new Error('图片生成失败。'))
+            reject(new Error(tr('ex.040')))
             return
           }
           downloadBlobFile(filename, blob)
@@ -317,7 +318,7 @@ export function downloadSvgAsPng(filename: string, svg: string) {
     }
     image.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('图片生成失败。'))
+      reject(new Error(tr('ex.040')))
     }
     image.src = url
   })
@@ -338,8 +339,8 @@ export function buildCalendarCsv(state: AppState, range: ExportRange) {
     byDate.set(date, [...(byDate.get(date) ?? []), assignment])
   }
   const rows: unknown[][] = [[
-    '日期', '星期', '日期类型', '容量分钟', '当日计划分钟', '任务数',
-    '科目', '任务组', '任务', '预计分钟', '进度', '状态', '是否锁定', '备注',
+    tr('ex.001'), tr('ex.041'), tr('ex.042'), tr('ex.043'), tr('ex.044'), tr('ex.045'),
+    tr('ex.003'), tr('ex.004'), tr('ex.002'), tr('ex.005'), tr('ex.007'), tr('ex.008'), tr('ex.046'), tr('ex.047'),
   ]]
   for (const date of dateRange(range.start, range.end)) {
     const assignments = byDate.get(date) ?? []
@@ -364,7 +365,7 @@ export function buildCalendarCsv(state: AppState, range: ExportRange) {
         assignment.estimatedMinutes,
         `${Math.round(assignment.progress)}%`,
         taskStatusLabel[assignment.status],
-        assignment.locked ? '是' : '否',
+        assignment.locked ? tr('ex.048') : tr('ex.049'),
         assignment.notes ?? group?.notes ?? '',
       ])
     }
@@ -400,17 +401,17 @@ export function buildCalendarIcs(state: AppState, range: ExportRange, generatedA
     'PRODID:-//Study Planner//Calendar Export//ZH-CN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:${icsEscape(state.settings.planName)}`,
+    `X-WR-CALNAME:${icsEscape(displayPlanName(state.settings.planName))}`,
   ]
   for (const assignment of assignmentsInRange(state, range)) {
     const group = groups.get(assignment.groupId)
     const date = assignment.scheduledDate!
     const description = [
-      `任务组：${group?.title ?? '未分组'}`,
-      `科目：${group?.subject ?? '其他'}`,
-      `预计：${assignment.estimatedMinutes} 分钟`,
-      `状态：${taskStatusLabel[assignment.status]}`,
-      assignment.notes || group?.notes ? `备注：${assignment.notes ?? group?.notes}` : '',
+      tr('ex.051', { v: group?.title ?? tr('ex.050') }),
+      tr('ex.052', { v: group?.subject ?? '其他' }),
+      tr('ex.053', { estimatedMinutes: assignment.estimatedMinutes }),
+      tr('ex.054', { v: taskStatusLabel[assignment.status] }),
+      assignment.notes || group?.notes ? tr('ex.055', { v: assignment.notes ?? group?.notes ?? '' }) : '',
     ].filter(Boolean).join('\n')
     lines.push(
       'BEGIN:VEVENT',
@@ -433,7 +434,7 @@ export function buildStatisticsCsv(state: AppState, range: ExportRange) {
   const groups = activeGroupMap(state)
   const rows = aggregateDaily(state.assignments, groups, state.settings.countWordsTime, range.start, range.end, state.dailyPlanBaselines)
   return toCsv([
-    ['日期', '星期', '原计划分钟', '真实实际分钟', '推断时间分钟', '计划外真实分钟', '计时器分钟', '手动记录分钟', '计划任务数', '完成任务数', '部分完成数', '任务完成率', '工作量完成率', '逾期任务数', '状态估算任务数', '专注次数', '7日真实均值'],
+    [tr('ex.001'), tr('ex.041'), tr('ex.056'), tr('ex.057'), tr('ex.058'), tr('ex.059'), tr('ex.060'), tr('ex.061'), tr('ex.062'), tr('ex.063'), tr('ex.064'), tr('ex.065'), tr('ex.066'), tr('ex.067'), tr('ex.068'), tr('ex.069'), tr('ex.070')],
     ...rows.map(row => [
       row.date,
       fmtWeekday(row.date),
@@ -462,12 +463,12 @@ function entryDate(value?: string) {
 }
 
 function sourceLabel(source?: string) {
-  return source === 'timer' ? '计时器' : source === 'finish' ? '完成时记录' : source === 'inferred' ? '推断记录' : source === 'manual' ? '手动补录' : '旧数据折算'
+  return source === 'timer' ? tr('ex.071') : source === 'finish' ? tr('ex.072') : source === 'inferred' ? tr('ex.073') : source === 'manual' ? tr('ex.074') : tr('ex.075')
 }
 
 export function buildTimeLedgerCsv(state: AppState, range: ExportRange) {
   const groups = activeGroupMap(state)
-  const rows: unknown[][] = [['归属日期', '任务', '任务组', '科目', '分钟', '来源', '创建时间', '修改时间', '记录ID']]
+  const rows: unknown[][] = [[tr('ex.076'), tr('ex.002'), tr('ex.004'), tr('ex.003'), tr('ex.077'), tr('ex.078'), tr('ex.079'), tr('ex.080'), tr('ex.081')]]
   for (const assignment of state.assignments) {
     const group = groups.get(assignment.groupId)
     if (!group) continue
@@ -526,11 +527,11 @@ function assignmentTimeEvidence(assignment: Assignment) {
   const inferredEntries = (assignment.timeEntries ?? []).filter(entry => isInferredTimeEntry(entry) && Math.max(0, Number(entry.minutes) || 0) > 0)
   const realMinutes = realEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.minutes) || 0), 0)
   const inferredMinutes = inferredEntries.reduce((sum, entry) => sum + Math.max(0, Number(entry.minutes) || 0), 0)
-  if (assignment.status === 'done' && realMinutes <= 0 && inferredMinutes <= 0 && assignment.actualMinutes <= 0) return '无记录完成'
-  if (realMinutes <= 0 && inferredMinutes > 0) return '推断完成'
-  if (realMinutes > 0 && inferredMinutes > 0) return '真实 + 推断'
-  if (realMinutes > 0 || assignment.actualMinutes > 0) return '有真实记录'
-  return '无时间记录'
+  if (assignment.status === 'done' && realMinutes <= 0 && inferredMinutes <= 0 && assignment.actualMinutes <= 0) return tr('ex.082')
+  if (realMinutes <= 0 && inferredMinutes > 0) return tr('ex.083')
+  if (realMinutes > 0 && inferredMinutes > 0) return tr('ex.084')
+  if (realMinutes > 0 || assignment.actualMinutes > 0) return tr('ex.085')
+  return tr('ex.086')
 }
 
 function realMinutesInRange(assignment: Assignment, range: ExportRange) {
@@ -675,9 +676,9 @@ function dailyChartSvg(rows: ReturnType<typeof aggregateDaily>) {
   const guides = [0, .5, 1].map(ratio => {
     const value = Math.round(max * ratio)
     const yy = y(value)
-    return `<line x1="${left}" x2="${width - right}" y1="${yy}" y2="${yy}" stroke="#e7edf4"/><text x="${left - 9}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#8a97aa">${value}分</text>`
+    return `<line x1="${left}" x2="${width - right}" y1="${yy}" y2="${yy}" stroke="#e7edf4"/><text x="${left - 9}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#8a97aa">${value}${tr('ex.023')}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="每日计划与实际学习趋势">${guides}${bars}<polyline points="${movingPoints}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><rect width="10" height="10" rx="2" fill="#2563eb"/><text x="16" y="9" font-size="10" fill="#68758a">实际</text><line x1="66" x2="78" y1="5" y2="5" stroke="#94a3b8" stroke-width="2"/><text x="84" y="9" font-size="10" fill="#68758a">计划</text><line x1="137" x2="149" y1="5" y2="5" stroke="#8b5cf6" stroke-width="2.5"/><text x="155" y="9" font-size="10" fill="#68758a">7日均值</text></g></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tr('ex.087')}">${guides}${bars}<polyline points="${movingPoints}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><rect width="10" height="10" rx="2" fill="#2563eb"/><text x="16" y="9" font-size="10" fill="#68758a">${tr('ex.088')}</text><line x1="66" x2="78" y1="5" y2="5" stroke="#94a3b8" stroke-width="2"/><text x="84" y="9" font-size="10" fill="#68758a">${tr('ex.021')}</text><line x1="137" x2="149" y1="5" y2="5" stroke="#8b5cf6" stroke-width="2.5"/><text x="155" y="9" font-size="10" fill="#68758a">${tr('ex.089')}</text></g></svg>`
 }
 
 function subjectChartSvg(rows: ExportSubjectSummary[]) {
@@ -695,7 +696,7 @@ function subjectChartSvg(rows: ExportSubjectSummary[]) {
     const actualWidth = chartWidth * row.actual / max
     return `<text x="${left - 12}" y="${y + 14}" text-anchor="end" font-size="12" fill="#26344b">${xml(row.subject)}</text><rect x="${left}" y="${y}" width="${plannedWidth.toFixed(1)}" height="10" rx="5" fill="#dbe3ee"/><rect x="${left}" y="${y + 14}" width="${actualWidth.toFixed(1)}" height="10" rx="5" fill="${color}"/><text x="${width - right + 10}" y="${y + 23}" font-size="10" fill="#68758a">${xml(minutesText(row.actual))}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="各科计划与实际投入">${bars}<g transform="translate(${left},${height - 16})"><rect width="10" height="10" rx="3" fill="#dbe3ee"/><text x="16" y="9" font-size="10" fill="#68758a">计划</text><rect x="62" width="10" height="10" rx="3" fill="#2563eb"/><text x="78" y="9" font-size="10" fill="#68758a">实际</text></g></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tr('ex.090')}">${bars}<g transform="translate(${left},${height - 16})"><rect width="10" height="10" rx="3" fill="#dbe3ee"/><text x="16" y="9" font-size="10" fill="#68758a">${tr('ex.021')}</text><rect x="62" width="10" height="10" rx="3" fill="#2563eb"/><text x="78" y="9" font-size="10" fill="#68758a">${tr('ex.088')}</text></g></svg>`
 }
 
 function buildLegacyStatisticsReportHtml(state: AppState, range: ExportRange) {
@@ -718,9 +719,9 @@ function buildLegacyStatisticsReportHtml(state: AppState, range: ExportRange) {
     const group = groups.get(item.groupId)
     return `<tr><td>${html(item.scheduledDate)}</td><td>${html(item.title)}</td><td>${html(group?.subject ?? '其他')}</td><td>${item.estimatedMinutes}</td><td>${item.actualMinutes}</td><td>${html(taskStatusLabel[item.status])}</td></tr>`
   }).join('')
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(state.settings.planName)} 学习统计报告</title><style>
+  return `<!doctype html><html lang="${getActiveLanguage() === 'en' ? 'en' : 'zh-CN'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(displayPlanName(state.settings.planName))} ${tr('ex.094')}</title><style>
   :root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#172033;background:#fff}*{box-sizing:border-box}body{margin:0 auto;max-width:1080px;padding:34px}header{border-bottom:2px solid #2563eb;padding-bottom:18px;margin-bottom:24px}h1{font-size:28px;margin:0 0 8px;letter-spacing:-.03em}h2{font-size:18px;margin:28px 0 11px}h3{font-size:14px;margin:0 0 8px}p{color:#667085;margin:4px 0;line-height:1.6}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}.summary div{border:1px solid #dfe5ee;border-radius:13px;padding:14px;background:#fbfcfe}.summary span{display:block;color:#667085;font-size:11px}.summary strong{display:block;font-size:21px;margin-top:6px}.chart{border:1px solid #e1e8f1;border-radius:14px;padding:12px 14px;background:#fff}.chart svg{width:100%;height:auto;display:block}.two-column{display:grid;grid-template-columns:1fr 1fr;gap:14px}.table-wrap{overflow:hidden;border:1px solid #e1e8f1;border-radius:12px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #e6ebf1;padding:8px 7px;text-align:left}th{background:#f5f8fc;color:#526176;font-weight:700}tbody tr:last-child td{border-bottom:0}.privacy{margin-top:24px;padding:12px;border-radius:10px;background:#f4f7fb;font-size:10px}.muted{color:#7a8799;font-size:11px}@media print{body{padding:0;max-width:none}thead{display:table-header-group}.summary div,.chart,.two-column>section{break-inside:avoid}h2{break-after:avoid}}@media(max-width:700px){body{padding:20px}.summary{grid-template-columns:1fr 1fr}.two-column{grid-template-columns:1fr}.table-wrap{overflow:auto}table{min-width:620px}}
-  </style></head><body><header><h1>${html(state.settings.planName)} 学习统计报告</h1><p>${html(range.start)} 至 ${html(range.end)} · 生成于 ${html(generatedAt)}</p><p class="muted">实际学习按实际发生日期归属；计划外学习单独标记，不会混入原计划完成率。</p></header><section class="summary"><div><span>已发生实际</span><strong>${minutesText(actual)}</strong></div><div><span>原计划</span><strong>${minutesText(planned)}</strong></div><div><span>实际学习天数 · 日均</span><strong>${activeDays} 天 · ${minutesText(average)}</strong></div><div><span>完成率 · 有效专注</span><strong>${completion}% · ${focusSessions} 次</strong></div></section><h2>每日学习趋势</h2><div class="chart">${dailyChartSvg(daily)}</div><section class="two-column"><section><h2>各科投入</h2><div class="chart">${subjects.length ? subjectChartSvg(subjects) : '<p class="muted">范围内还没有可统计的科目数据。</p>'}</div></section><section><h2>统计口径</h2><div class="chart"><p>已发生实际：${minutesText(actual)}；其中计划外 ${minutesText(extra)}。</p><p>任务完成率同时参考任务数量与当前进度，工作量完成率按预计分钟加权。</p><p>有效专注：计时器产生且不少于 1 分钟的记录。</p></div></section></section><h2>每日明细</h2><div class="table-wrap"><table><thead><tr><th>日期</th><th>星期</th><th>原计划</th><th>实际</th><th>计划外</th><th>任务完成</th><th>逾期</th><th>专注次数</th></tr></thead><tbody>${dailyRows}</tbody></table></div><h2>科目明细</h2><div class="table-wrap"><table><thead><tr><th>科目</th><th>计划分钟</th><th>实际分钟</th><th>任务数</th><th>已完成</th><th>完成率</th></tr></thead><tbody>${subjectRows || '<tr><td colspan="6">没有可统计的科目数据。</td></tr>'}</tbody></table></div><h2>任务明细</h2><div class="table-wrap"><table><thead><tr><th>日期</th><th>任务</th><th>科目</th><th>预计</th><th>实际累计</th><th>状态</th></tr></thead><tbody>${taskRows || '<tr><td colspan="6">这个范围没有已排期任务。</td></tr>'}</tbody></table></div><p class="privacy">报告可能包含个人任务、目标和学习时间。分享前请先检查内容。你可以在打印窗口选择“另存为 PDF”。</p></body></html>`
+  </style></head><body><header><h1>${html(displayPlanName(state.settings.planName))} ${tr('ex.094')}</h1><p>${html(range.start)} ${tr('ex.031')} ${html(range.end)} ${tr('ex.095')} ${html(generatedAt)}</p><p class="muted">${tr('ex.096')}</p></header><section class="summary"><div><span>${tr('ex.097')}</span><strong>${minutesText(actual)}</strong></div><div><span>${tr('ex.098')}</span><strong>${minutesText(planned)}</strong></div><div><span>${tr('ex.099')}</span><strong>${activeDays} ${tr('ex.100')} ${minutesText(average)}</strong></div><div><span>${tr('ex.101')}</span><strong>${completion}% · ${focusSessions} ${tr('ex.102')}</strong></div></section><h2>${tr('ex.103')}</h2><div class="chart">${dailyChartSvg(daily)}</div><section class="two-column"><section><h2>${tr('ex.104')}</h2><div class="chart">${subjects.length ? subjectChartSvg(subjects) : tr('ex.091')}</div></section><section><h2>${tr('ex.105')}</h2><div class="chart"><p>${tr('ex.106')}${minutesText(actual)}${tr('ex.107')} ${minutesText(extra)}。</p><p>${tr('ex.108')}</p><p>${tr('ex.109')}</p></div></section></section><h2>${tr('ex.110')}</h2><div class="table-wrap"><table><thead><tr><th>${tr('ex.001')}</th><th>${tr('ex.041')}</th><th>${tr('ex.098')}</th><th>${tr('ex.088')}</th><th>${tr('ex.020')}</th><th>${tr('ex.111')}</th><th>${tr('ex.112')}</th><th>${tr('ex.069')}</th></tr></thead><tbody>${dailyRows}</tbody></table></div><h2>${tr('ex.113')}</h2><div class="table-wrap"><table><thead><tr><th>${tr('ex.003')}</th><th>${tr('ex.114')}</th><th>${tr('ex.006')}</th><th>${tr('ex.045')}</th><th>${tr('ex.011')}</th><th>${tr('ex.115')}</th></tr></thead><tbody>${subjectRows || tr('ex.092')}</tbody></table></div><h2>${tr('ex.116')}</h2><div class="table-wrap"><table><thead><tr><th>${tr('ex.001')}</th><th>${tr('ex.002')}</th><th>${tr('ex.003')}</th><th>${tr('ex.117')}</th><th>${tr('ex.118')}</th><th>${tr('ex.008')}</th></tr></thead><tbody>${taskRows || tr('ex.093')}</tbody></table></div><p class="privacy">${tr('ex.119')}</p></body></html>`
 }
 
 function completionChartSvg(rows: ReturnType<typeof aggregateDaily>) {
@@ -742,7 +743,7 @@ function completionChartSvg(rows: ReturnType<typeof aggregateDaily>) {
     if (index % step !== 0 && index !== rows.length - 1) return ''
     return `<text x="${x(index)}" y="${height - 18}" text-anchor="middle" font-size="10" fill="#718096">${xml(row.shortLabel)}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="每日任务完成率与工作量完成率">${guides}<polyline points="${line('taskCompletion')}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${line('workloadCompletion')}" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><line x1="0" x2="14" y1="5" y2="5" stroke="#2563eb" stroke-width="2.5"/><text x="20" y="9" font-size="10" fill="#68758a">任务数完成率</text><line x1="105" x2="119" y1="5" y2="5" stroke="#16a34a" stroke-width="2.5"/><text x="125" y="9" font-size="10" fill="#68758a">工作量完成率</text></g></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tr('ex.120')}">${guides}<polyline points="${line('taskCompletion')}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${line('workloadCompletion')}" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><line x1="0" x2="14" y1="5" y2="5" stroke="#2563eb" stroke-width="2.5"/><text x="20" y="9" font-size="10" fill="#68758a">${tr('ex.121')}</text><line x1="105" x2="119" y1="5" y2="5" stroke="#16a34a" stroke-width="2.5"/><text x="125" y="9" font-size="10" fill="#68758a">${tr('ex.066')}</text></g></svg>`
 }
 
 function focusChartSvg(rows: ReturnType<typeof aggregateDaily>) {
@@ -774,7 +775,7 @@ function focusChartSvg(rows: ReturnType<typeof aggregateDaily>) {
     const yy = y(value)
     return `<line x1="${left}" x2="${width - right}" y1="${yy}" y2="${yy}" stroke="#e7edf4"/><text x="${left - 9}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#8a97aa">${value}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="每日有效专注分钟与次数">${guides}${bars}<polyline points="${points}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><rect width="10" height="10" rx="2" fill="#8b5cf6"/><text x="16" y="9" font-size="10" fill="#68758a">专注分钟</text><line x1="88" x2="102" y1="5" y2="5" stroke="#f59e0b" stroke-width="2.5"/><text x="108" y="9" font-size="10" fill="#68758a">有效次数</text></g></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tr('ex.122')}">${guides}${bars}<polyline points="${points}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${labels}<g transform="translate(${left},10)"><rect width="10" height="10" rx="2" fill="#8b5cf6"/><text x="16" y="9" font-size="10" fill="#68758a">${tr('ex.123')}</text><line x1="88" x2="102" y1="5" y2="5" stroke="#f59e0b" stroke-width="2.5"/><text x="108" y="9" font-size="10" fill="#68758a">${tr('ex.124')}</text></g></svg>`
 }
 
 function heatmapSvg(rows: ReturnType<typeof aggregateDaily>) {
@@ -796,14 +797,14 @@ function heatmapSvg(rows: ReturnType<typeof aggregateDaily>) {
     const y = top + weekday * (cell + gap)
     return `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="5" fill="${color(row.actual)}"><title>${xml(row.label)} · ${xml(minutesText(row.actual))}</title></rect>`
   }).join('')
-  const weekdays = ['一', '三', '五', '日'].map((label, index) => `<text x="${left - 8}" y="${top + [0, 2, 4, 6][index] * (cell + gap) + 10}" text-anchor="end" font-size="9" fill="#718096">${label}</text>`).join('')
+  const weekdays = [tr('ex.125'), tr('ex.126'), tr('ex.127'), tr('ex.128')].map((label, index) => `<text x="${left - 8}" y="${top + [0, 2, 4, 6][index] * (cell + gap) + 10}" text-anchor="end" font-size="9" fill="#718096">${label}</text>`).join('')
   const months = rows.map((row, index) => {
     if (index > 0 && !row.date.endsWith('-01')) return ''
     const position = offset + index
     const column = Math.floor(position / 7)
-    return `<text x="${left + column * (cell + gap)}" y="${top - 8}" font-size="9" fill="#718096">${Number(row.date.slice(5, 7))}月</text>`
+    return `<text x="${left + column * (cell + gap)}" y="${top - 8}" font-size="9" fill="#718096">${tr('ex.129', { month: Number(row.date.slice(5, 7)) })}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="实际学习时间热力图">${weekdays}${months}${cells}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tr('ex.130')}">${weekdays}${months}${cells}</svg>`
 }
 
 interface ExportLedgerRow {
@@ -840,10 +841,10 @@ function ledgerRowsForExport(state: AppState, range: ExportRange): ExportLedgerR
 }
 
 function accuracyLabel(value?: number) {
-  if (value === undefined) return '样本不足'
-  if (value > 0) return `低估 ${Math.round(value)}%`
-  if (value < 0) return `高估 ${Math.abs(Math.round(value))}%`
-  return '预计准确'
+  if (value === undefined) return tr('ex.131')
+  if (value > 0) return tr('ex.132', { v: Math.round(value) })
+  if (value < 0) return tr('ex.133', { v: Math.abs(Math.round(value)) })
+  return tr('ex.134')
 }
 
 function reportSection(enabled: boolean, title: string, content: string) {
@@ -871,11 +872,11 @@ export function buildStatisticsReportHtml(state: AppState, range: ExportRange, r
   const taskCompletion = taskCount ? completedEquivalent / taskCount * 100 : 0
   const workloadCompletion = planned ? daily.reduce((sum, row) => sum + row.planned * row.workloadCompletion / 100, 0) / planned * 100 : 0
   const estimatedStatusTasks = daily.reduce((sum, row) => sum + row.estimatedStatusTasks, 0)
-  const noRecordCompleted = assignments.filter(item => assignmentTimeEvidence(item) === '无记录完成').length
+  const noRecordCompleted = assignments.filter(item => assignmentTimeEvidence(item) === tr('ex.082')).length
   const activeDays = daily.filter(row => row.actual > 0).length
   const average = activeDays ? Math.round(actual / activeDays) : 0
   const focusSessions = daily.reduce((sum, row) => sum + row.focusSessions, 0)
-  const focusDurations = ledgerRows.filter(row => row.source === '计时器').map(row => row.minutes)
+  const focusDurations = ledgerRows.filter(row => row.source === tr('ex.071')).map(row => row.minutes)
   const averageFocus = focusDurations.length ? Math.round(focusDurations.reduce((sum, value) => sum + value, 0) / focusDurations.length) : 0
   const longestFocus = focusDurations.length ? Math.max(...focusDurations) : 0
   const today = todayISO()
@@ -896,14 +897,14 @@ export function buildStatisticsReportHtml(state: AppState, range: ExportRange, r
     const ids = new Set(state.taskGroups.filter(group => group.priority === priority && !group.hidden).map(group => group.id))
     const items = state.assignments.filter(item => ids.has(item.groupId))
     const completed = items.reduce((sum, item) => sum + progressForExport(item), 0)
-    return { label: priority === 5 ? '核心' : priority === 3 ? '高' : priority === 2 ? '中' : priority === 1 ? '低' : '可选', total: items.length, completion: items.length ? completed / items.length * 100 : 0 }
+    return { label: priority === 5 ? tr('ex.135') : priority === 3 ? tr('ex.136') : priority === 2 ? tr('ex.137') : priority === 1 ? tr('ex.138') : tr('ex.139'), total: items.length, completion: items.length ? completed / items.length * 100 : 0 }
   }).filter(row => row.total > 0)
   const dominantSubject = subjects.filter(item => actual > 0 && item.actual > 0).sort((a, b) => b.actual - a.actual)[0]
   const insightItems = [
-    planned > 0 ? { tone: actual >= planned ? 'positive' : 'warning', title: actual >= planned ? '实际学习达到或超过原计划' : '实际学习低于原计划', detail: `范围内实际 ${minutesText(actual)}，原计划 ${minutesText(planned)}，完成 ${Math.round(workloadCompletion)}%。` } : undefined,
-    dominantSubject ? { tone: 'neutral', title: `${dominantSubject.subject}是投入最多的科目`, detail: `实际 ${minutesText(dominantSubject.actual)}，占有效学习 ${Math.round(dominantSubject.actual / Math.max(actual, 1) * 100)}%。` } : undefined,
-    currentLate > 0 ? { tone: 'warning', title: `当前有 ${currentLate} 项任务超过原定日期`, detail: '延期统计按当前任务日期计算，不会把已经归档的任务混入。' } : undefined,
-    durationSuggestions.length ? { tone: 'neutral', title: `有 ${durationSuggestions.length} 个任务组出现稳定时长偏差`, detail: '报告只展示建议，不会在导出时修改预计时长或计划。' } : undefined,
+    planned > 0 ? { tone: actual >= planned ? 'positive' : 'warning', title: actual >= planned ? tr('ex.140') : tr('ex.141'), detail: tr('ex.142', { v: minutesText(actual), v2: minutesText(planned), v3: Math.round(workloadCompletion) }) } : undefined,
+    dominantSubject ? { tone: 'neutral', title: tr('ex.143', { subject: dominantSubject.subject }), detail: tr('ex.144', { v: minutesText(dominantSubject.actual), v2: Math.round(dominantSubject.actual / Math.max(actual, 1) * 100) }) } : undefined,
+    currentLate > 0 ? { tone: 'warning', title: tr('ex.145', { currentLate }), detail: tr('ex.146') } : undefined,
+    durationSuggestions.length ? { tone: 'neutral', title: tr('ex.147', { length: durationSuggestions.length }), detail: tr('ex.148') } : undefined,
   ].filter(Boolean) as Array<{ tone: string; title: string; detail: string }>
   const dailyRows = daily.map(row => `<tr><td>${html(row.date)}</td><td>${html(fmtWeekday(row.date))}</td><td>${row.planned}</td><td>${row.actual}</td><td>${row.inferred}</td><td>${row.extraActual}</td><td>${row.timerActual}</td><td>${row.manualActual}</td><td>${row.plannedTasks}</td><td>${row.doneTasks}</td><td>${row.partialTasks}</td><td>${Math.round(row.taskCompletion)}%</td><td>${Math.round(row.workloadCompletion)}%</td><td>${row.lateTasks}</td><td>${row.estimatedStatusTasks}</td><td>${row.focusSessions}</td></tr>`).join('')
   const subjectRows = subjects.map(row => `<tr><td>${html(row.subject)}</td><td>${row.planned}</td><td>${row.actual}</td><td>${row.total}</td><td>${row.done}</td><td>${Math.round(row.completedEquivalent / Math.max(row.total, 1) * 100)}%</td><td>${html(accuracyLabel(row.accuracy))}</td><td>${row.sampleSize || '—'}</td></tr>`).join('')
@@ -924,58 +925,58 @@ export function buildStatisticsReportHtml(state: AppState, range: ExportRange, r
     const taskItems = dayAssignments.length ? dayAssignments.map(item => {
       const group = groups.get(item.groupId)
       const stateClass = item.status === 'done' ? 'done' : item.status === 'partial' ? 'partial' : 'todo'
-      const stateText = item.status === 'done' ? '已完成' : item.status === 'partial' ? `部分完成 ${Math.round(item.progress)}%` : '未完成'
-      return `<li><span class="day-task-title"><i class="subject-dot" style="background:${subjectSvgColors[group?.subject ?? '其他'] ?? subjectSvgColors.其他}"></i><strong>${html(item.title)}</strong><small>${html(group?.subject ?? '其他')} · ${item.estimatedMinutes} 分钟</small></span><span class="task-state ${stateClass}">${stateText}</span></li>`
-    }).join('') : '<li class="day-task-empty">当天没有已排任务</li>'
-    return `<article class="day-task-card"><header><div><strong>${html(fmtDate(date))}</strong><span>${html(fmtWeekday(date))}</span></div><em>${doneCount}/${dayAssignments.length} 已完成</em></header><ul>${taskItems}</ul></article>`
+      const stateText = item.status === 'done' ? tr('ex.011') : item.status === 'partial' ? tr('ex.149', { v: Math.round(item.progress) }) : tr('ex.009')
+      return `<li><span class="day-task-title"><i class="subject-dot" style="background:${subjectSvgColors[group?.subject ?? '其他'] ?? subjectSvgColors.其他}"></i><strong>${html(item.title)}</strong><small>${html(group?.subject ?? '其他')} · ${item.estimatedMinutes} ${tr('ex.077')}</small></span><span class="task-state ${stateClass}">${stateText}</span></li>`
+    }).join('') : tr('ex.150')
+    return `<article class="day-task-card"><header><div><strong>${html(fmtDate(date))}</strong><span>${html(fmtWeekday(date))}</span></div><em>${doneCount}/${dayAssignments.length} ${tr('ex.011')}</em></header><ul>${taskItems}</ul></article>`
   }).join('')
   const ledgerSummary = [
-    ['计时器', timer],
-    ['手动补录', manual],
-    ['推断时间', inferred],
-    ['旧数据折算', legacy],
-    ['计划外学习', extra],
+    [tr('ex.071'), timer],
+    [tr('ex.074'), manual],
+    [tr('ex.151'), inferred],
+    [tr('ex.075'), legacy],
+    [tr('ex.152'), extra],
   ].map(([label, value]) => `<div class="report-stat"><span>${label}</span><strong>${minutesText(Number(value))}</strong></div>`).join('')
   const goalTable = goalRows.map(row => {
     const goal = state.goals.find(item => item.id === row.goalId)
     if (!goal) return ''
-    return `<tr><td>${html(goal.title)}</td><td>${row.completedCount}/${row.requiredCount}</td><td>${Math.round(row.progress * 100)}%</td><td>${html(row.expectedCompletion ? fmtDate(row.expectedCompletion) : row.completed ? '已完成' : '无法预计')}</td><td>${html(row.latestRisk ? '最晚日期风险' : row.desiredRisk ? '期望日期风险' : '正常')}</td><td>${minutesText(row.estimatedRemainingMinutes)}</td></tr>`
+    return `<tr><td>${html(goal.title)}</td><td>${row.completedCount}/${row.requiredCount}</td><td>${Math.round(row.progress * 100)}%</td><td>${html(row.expectedCompletion ? fmtDate(row.expectedCompletion) : row.completed ? tr('ex.011') : tr('ex.153'))}</td><td>${html(row.latestRisk ? tr('ex.154') : row.desiredRisk ? tr('ex.155') : tr('ex.156'))}</td><td>${minutesText(row.estimatedRemainingMinutes)}</td></tr>`
   }).join('')
   const versionRows = [...state.planVersions].reverse().map(version => `<tr><td>${html(new Date(version.timestamp).toLocaleString('zh-CN'))}</td><td>${html(version.reason)}</td><td>${version.summary.goalCount}</td><td>${version.summary.groupCount}</td><td>${version.summary.assignmentCount}</td><td>${version.summary.completedCount}</td><td>${version.summary.movedTaskCount}</td><td>${minutesText(version.summary.scheduledMinutes)}</td></tr>`).join('')
-  const accuracyRows = subjects.filter(item => item.accuracy !== undefined).sort((a, b) => Math.abs(b.accuracy ?? 0) - Math.abs(a.accuracy ?? 0)).map(item => `<tr><td>${html(item.subject)}</td><td>${html(accuracyLabel(item.accuracy))}</td><td>${item.sampleSize}</td><td>${item.actual} 分钟</td></tr>`).join('')
+  const accuracyRows = subjects.filter(item => item.accuracy !== undefined).sort((a, b) => Math.abs(b.accuracy ?? 0) - Math.abs(a.accuracy ?? 0)).map(item => `<tr><td>${html(item.subject)}</td><td>${html(accuracyLabel(item.accuracy))}</td><td>${item.sampleSize}</td><td>${item.actual} ${tr('ex.077')}</td></tr>`).join('')
   const suggestionRows = durationSuggestions.map(suggestion => {
     const group = groups.get(suggestion.groupId)
-    return `<tr><td>${html(group?.subject ?? '其他')}</td><td>${html(group?.title ?? suggestion.groupId)}</td><td>${suggestion.currentEstimate} 分钟</td><td>${suggestion.suggestedEstimate} 分钟</td><td>${suggestion.recentAverage} 分钟</td><td>${suggestion.sampleCount}</td></tr>`
+    return `<tr><td>${html(group?.subject ?? '其他')}</td><td>${html(group?.title ?? suggestion.groupId)}</td><td>${suggestion.currentEstimate} ${tr('ex.077')}</td><td>${suggestion.suggestedEstimate} ${tr('ex.077')}</td><td>${suggestion.recentAverage} ${tr('ex.077')}</td><td>${suggestion.sampleCount}</td></tr>`
   }).join('')
-  const insightHtml = insightItems.length ? `<div class="report-insights">${insightItems.map(item => `<article class="${item.tone}"><strong>${html(item.title)}</strong><span>${html(item.detail)}</span></article>`).join('')}</div>` : '<p class="muted">范围内暂时没有可生成的洞察。</p>'
+  const insightHtml = insightItems.length ? `<div class="report-insights">${insightItems.map(item => `<article class="${item.tone}"><strong>${html(item.title)}</strong><span>${html(item.detail)}</span></article>`).join('')}</div>` : tr('ex.157')
   const ledgerDetailRows = ledgerRows.map(row => `<tr><td>${html(row.date)}</td><td>${html(row.title)}</td><td>${html(row.group)}</td><td>${html(row.subject)}</td><td>${row.minutes}</td><td>${html(row.source)}</td><td>${html(row.createdAt)}</td></tr>`).join('')
   const generatedAt = new Date().toLocaleString('zh-CN')
   const empty = (columns: number, message: string) => `<tr><td colspan="${columns}">${html(message)}</td></tr>`
-  const overviewHtml = `<div class="report-stat-grid"><div class="report-stat"><span>范围内真实实际</span><strong>${minutesText(actual)}</strong></div><div class="report-stat"><span>原计划</span><strong>${minutesText(planned)}</strong></div><div class="report-stat"><span>实际学习天数 · 日均</span><strong>${activeDays} 天 · ${minutesText(average)}</strong></div><div class="report-stat"><span>任务完成率</span><strong>${Math.round(taskCompletion)}%</strong></div><div class="report-stat"><span>工作量完成率</span><strong>${Math.round(workloadCompletion)}%</strong></div><div class="report-stat"><span>计划外真实学习</span><strong>${minutesText(extra)}</strong></div><div class="report-stat"><span>推断时间</span><strong>${minutesText(inferred)}</strong></div><div class="report-stat"><span>无记录完成</span><strong>${noRecordCompleted} 项</strong></div><div class="report-stat"><span>有效专注</span><strong>${focusSessions} 次</strong></div><div class="report-stat"><span>平均每次专注</span><strong>${minutesText(averageFocus)}</strong></div></div><div class="report-note"><strong>统计范围：</strong>${html(range.start)} 至 ${html(range.end)}。真实时间按时间记录发生日期归属；推断时间和无记录完成单独展示，不会伪装成真实学习分钟。</div>`
+  const overviewHtml = `<div class="report-stat-grid"><div class="report-stat"><span>${tr('ex.158')}</span><strong>${minutesText(actual)}</strong></div><div class="report-stat"><span>${tr('ex.098')}</span><strong>${minutesText(planned)}</strong></div><div class="report-stat"><span>${tr('ex.099')}</span><strong>${activeDays} ${tr('ex.100')} ${minutesText(average)}</strong></div><div class="report-stat"><span>${tr('ex.065')}</span><strong>${Math.round(taskCompletion)}%</strong></div><div class="report-stat"><span>${tr('ex.066')}</span><strong>${Math.round(workloadCompletion)}%</strong></div><div class="report-stat"><span>${tr('ex.159')}</span><strong>${minutesText(extra)}</strong></div><div class="report-stat"><span>${tr('ex.151')}</span><strong>${minutesText(inferred)}</strong></div><div class="report-stat"><span>${tr('ex.082')}</span><strong>${noRecordCompleted} ${tr('ex.034')}</strong></div><div class="report-stat"><span>${tr('ex.160')}</span><strong>${focusSessions} ${tr('ex.102')}</strong></div><div class="report-stat"><span>${tr('ex.161')}</span><strong>${minutesText(averageFocus)}</strong></div></div><div class="report-note"><strong>${tr('ex.162')}</strong>${html(range.start)} ${tr('ex.031')} ${html(range.end)}${tr('ex.163')}</div>`
   const dailyHtml = `<div class="chart">${dailyChartSvg(daily)}</div>`
   const completionHtml = `<div class="chart">${completionChartSvg(daily)}</div>`
-  const focusHtml = `<div class="chart">${focusChartSvg(daily)}</div><div class="report-stat-grid report-stat-grid-four">${ledgerSummary}<div class="report-stat"><span>最长一次专注</span><strong>${minutesText(longestFocus)}</strong></div></div>`
-  const subjectHtml = `<div class="chart">${subjects.length ? subjectChartSvg(subjects) : '<p class="muted">范围内还没有可统计的科目数据。</p>'}</div><div class="table-wrap"><table><thead><tr><th>科目</th><th>计划分钟</th><th>实际分钟</th><th>任务数</th><th>已完成</th><th>完成率</th><th>时长准确度</th><th>样本</th></tr></thead><tbody>${subjectRows || empty(8, '没有可统计的科目数据。')}</tbody></table></div><h3 class="subheading">任务组明细</h3><div class="table-wrap"><table><thead><tr><th>科目</th><th>任务组</th><th>计划分钟</th><th>实际分钟</th><th>完成</th><th>时长准确度</th></tr></thead><tbody>${subjectGroupRows || empty(6, '没有可统计的任务组数据。')}</tbody></table></div>`
-  const accuracyHtml = `<p class="muted">只有完成至少 ${state.settings.duration.minimumSamples} 个有实际用时的任务后，才会形成正式时长准确度；建议只供参考，不会因导出自动修改计划。</p><div class="table-wrap"><table><thead><tr><th>科目</th><th>准确度</th><th>样本数</th><th>实际总时长</th></tr></thead><tbody>${accuracyRows || empty(4, '暂时没有达到样本数和偏差阈值的准确度数据。')}</tbody></table></div><h3 class="subheading">预计时长校准建议</h3><div class="table-wrap"><table><thead><tr><th>科目</th><th>任务组</th><th>当前预计</th><th>建议预计</th><th>样本平均</th><th>样本数</th></tr></thead><tbody>${suggestionRows || empty(6, '当前没有预计时长校准建议。')}</tbody></table></div>`
-  const goalsHtml = `<div class="two-column"><div><h3>当前目标</h3><div class="table-wrap"><table><thead><tr><th>目标</th><th>完成</th><th>进度</th><th>预计完成</th><th>风险</th><th>剩余</th></tr></thead><tbody>${goalTable || empty(6, '暂无目标。')}</tbody></table></div></div><div><h3>历史计划版本</h3><div class="table-wrap"><table><thead><tr><th>时间</th><th>原因</th><th>目标</th><th>任务组</th><th>任务</th><th>完成</th><th>移动</th><th>负载</th></tr></thead><tbody>${versionRows || empty(8, '尚无重大计划版本。')}</tbody></table></div></div></div>`
-  const qualityHtml = `<div class="report-stat-grid report-stat-grid-four"><div class="report-stat"><span>按期完成率</span><strong>${Math.round(onTimeRate)}%</strong><small>${onTime}/${completedCounted.length} 个可判断任务</small></div><div class="report-stat"><span>当前延期</span><strong>${currentLate} 项</strong></div><div class="report-stat"><span>顺延任务</span><strong>${carryovers} 项</strong></div><div class="report-stat"><span>计划变更率</span><strong>${activeTasks ? Math.round(changedTasks / activeTasks * 100) : 0}%</strong><small>${changedTasks}/${activeTasks} 项保留最近原日期</small></div></div><h3 class="subheading">优先级完成进度</h3><div class="table-wrap"><table><thead><tr><th>优先级</th><th>任务数</th><th>完成进度</th></tr></thead><tbody>${priorityRows.map(row => `<tr><td>${row.label}</td><td>${row.total}</td><td>${Math.round(row.completion)}%</td></tr>`).join('') || empty(3, '暂无优先级任务。')}</tbody></table></div><p class="report-note">计划变更率依据任务当前保留的最近一次原日期；旧数据可能没有完整的改期历史。顺延任务按系统记录的顺延来源统计。</p>`
+  const focusHtml = `<div class="chart">${focusChartSvg(daily)}</div><div class="report-stat-grid report-stat-grid-four">${ledgerSummary}<div class="report-stat"><span>${tr('ex.164')}</span><strong>${minutesText(longestFocus)}</strong></div></div>`
+  const subjectHtml = `<div class="chart">${subjects.length ? subjectChartSvg(subjects) : tr('ex.091')}</div><div class="table-wrap"><table><thead><tr><th>${tr('ex.003')}</th><th>${tr('ex.114')}</th><th>${tr('ex.006')}</th><th>${tr('ex.045')}</th><th>${tr('ex.011')}</th><th>${tr('ex.115')}</th><th>${tr('ex.167')}</th><th>${tr('ex.168')}</th></tr></thead><tbody>${subjectRows || empty(8, tr('ex.165'))}</tbody></table></div><h3 class="subheading">${tr('ex.169')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.003')}</th><th>${tr('ex.004')}</th><th>${tr('ex.114')}</th><th>${tr('ex.006')}</th><th>${tr('ex.170')}</th><th>${tr('ex.167')}</th></tr></thead><tbody>${subjectGroupRows || empty(6, tr('ex.166'))}</tbody></table></div>`
+  const accuracyHtml = `<p class="muted">${tr('ex.173')} ${state.settings.duration.minimumSamples} ${tr('ex.174')}</p><div class="table-wrap"><table><thead><tr><th>${tr('ex.003')}</th><th>${tr('ex.175')}</th><th>${tr('ex.176')}</th><th>${tr('ex.177')}</th></tr></thead><tbody>${accuracyRows || empty(4, tr('ex.171'))}</tbody></table></div><h3 class="subheading">${tr('ex.178')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.003')}</th><th>${tr('ex.004')}</th><th>${tr('ex.179')}</th><th>${tr('ex.180')}</th><th>${tr('ex.181')}</th><th>${tr('ex.176')}</th></tr></thead><tbody>${suggestionRows || empty(6, tr('ex.172'))}</tbody></table></div>`
+  const goalsHtml = `<div class="two-column"><div><h3>${tr('ex.184')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.185')}</th><th>${tr('ex.170')}</th><th>${tr('ex.007')}</th><th>${tr('ex.186')}</th><th>${tr('ex.187')}</th><th>${tr('ex.188')}</th></tr></thead><tbody>${goalTable || empty(6, tr('ex.182'))}</tbody></table></div></div><div><h3>${tr('ex.189')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.190')}</th><th>${tr('ex.191')}</th><th>${tr('ex.185')}</th><th>${tr('ex.004')}</th><th>${tr('ex.002')}</th><th>${tr('ex.170')}</th><th>${tr('ex.192')}</th><th>${tr('ex.193')}</th></tr></thead><tbody>${versionRows || empty(8, tr('ex.183'))}</tbody></table></div></div></div>`
+  const qualityHtml = `<div class="report-stat-grid report-stat-grid-four"><div class="report-stat"><span>${tr('ex.195')}</span><strong>${Math.round(onTimeRate)}%</strong><small>${onTime}/${completedCounted.length} ${tr('ex.196')}</small></div><div class="report-stat"><span>${tr('ex.197')}</span><strong>${currentLate} ${tr('ex.034')}</strong></div><div class="report-stat"><span>${tr('ex.198')}</span><strong>${carryovers} ${tr('ex.034')}</strong></div><div class="report-stat"><span>${tr('ex.199')}</span><strong>${activeTasks ? Math.round(changedTasks / activeTasks * 100) : 0}%</strong><small>${changedTasks}/${activeTasks} ${tr('ex.200')}</small></div></div><h3 class="subheading">${tr('ex.201')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.202')}</th><th>${tr('ex.045')}</th><th>${tr('ex.203')}</th></tr></thead><tbody>${priorityRows.map(row => `<tr><td>${row.label}</td><td>${row.total}</td><td>${Math.round(row.completion)}%</td></tr>`).join('') || empty(3, tr('ex.194'))}</tbody></table></div><p class="report-note">${tr('ex.204')}</p>`
   const emptyTaskDays = Math.max(0, daily.length - taskDates.length)
-  const detailsHtml = `<h3>每天任务清单</h3><p class="muted">按日期列出范围内有任务的全部日期。绿色表示已完成，橙色表示部分完成，灰色表示未完成；另有 ${emptyTaskDays} 天没有已排任务，已省略空白卡片。</p><div class="day-task-grid">${dailyTaskCards || '<article class="day-task-card"><p class="day-task-empty">这个范围没有已排任务。</p></article>'}</div><h3 class="subheading">每日统计明细</h3><div class="table-wrap"><table class="wide-table"><thead><tr><th>日期</th><th>星期</th><th>原计划</th><th>真实实际</th><th>推断</th><th>计划外真实</th><th>计时器</th><th>手动</th><th>任务数</th><th>完成</th><th>部分完成</th><th>任务完成</th><th>工作量完成</th><th>逾期</th><th>状态估算</th><th>专注次数</th></tr></thead><tbody>${dailyRows || empty(16, '没有每日数据。')}</tbody></table></div><h3 class="subheading">任务明细</h3><div class="table-wrap"><table><thead><tr><th>日期</th><th>任务</th><th>科目</th><th>预计</th><th>实际累计</th><th>进度</th><th>状态</th><th>时间口径</th></tr></thead><tbody>${taskRows || empty(8, '这个范围没有已排期任务。')}</tbody></table></div>`
-  const ledgerHtml = `<p class="muted">时间流水按实际发生日期列出，共 ${ledgerRows.length} 条；修改任务日期不会重写这些记录。</p><div class="table-wrap"><table><thead><tr><th>归属日期</th><th>任务</th><th>任务组</th><th>科目</th><th>分钟</th><th>来源</th><th>创建时间</th></tr></thead><tbody>${ledgerDetailRows || empty(7, '这个范围还没有时间流水。')}</tbody></table></div>`
+  const detailsHtml = `<h3>${tr('ex.208')}</h3><p class="muted">${tr('ex.209')} ${emptyTaskDays} ${tr('ex.210')}</p><div class="day-task-grid">${dailyTaskCards || tr('ex.205')}</div><h3 class="subheading">${tr('ex.211')}</h3><div class="table-wrap"><table class="wide-table"><thead><tr><th>${tr('ex.001')}</th><th>${tr('ex.041')}</th><th>${tr('ex.098')}</th><th>${tr('ex.212')}</th><th>${tr('ex.213')}</th><th>${tr('ex.214')}</th><th>${tr('ex.071')}</th><th>${tr('ex.215')}</th><th>${tr('ex.045')}</th><th>${tr('ex.170')}</th><th>${tr('ex.010')}</th><th>${tr('ex.111')}</th><th>${tr('ex.216')}</th><th>${tr('ex.112')}</th><th>${tr('ex.217')}</th><th>${tr('ex.069')}</th></tr></thead><tbody>${dailyRows || empty(16, tr('ex.206'))}</tbody></table></div><h3 class="subheading">${tr('ex.116')}</h3><div class="table-wrap"><table><thead><tr><th>${tr('ex.001')}</th><th>${tr('ex.002')}</th><th>${tr('ex.003')}</th><th>${tr('ex.117')}</th><th>${tr('ex.118')}</th><th>${tr('ex.007')}</th><th>${tr('ex.008')}</th><th>${tr('ex.218')}</th></tr></thead><tbody>${taskRows || empty(8, tr('ex.207'))}</tbody></table></div>`
+  const ledgerHtml = `<p class="muted">${tr('ex.220')} ${ledgerRows.length} ${tr('ex.221')}</p><div class="table-wrap"><table><thead><tr><th>${tr('ex.076')}</th><th>${tr('ex.002')}</th><th>${tr('ex.004')}</th><th>${tr('ex.003')}</th><th>${tr('ex.077')}</th><th>${tr('ex.078')}</th><th>${tr('ex.079')}</th></tr></thead><tbody>${ledgerDetailRows || empty(7, tr('ex.219'))}</tbody></table></div>`
   const selectedCount = Object.values(sections).filter(Boolean).length
-  const body = selectedCount === 0 ? '<div class="report-note">未选择报告内容，请回到导出页面至少选择一个模块。</div>' : [
-    reportSection(sections.overview, '范围概览', overviewHtml),
-    reportSection(sections.daily, '每日计划与实际', dailyHtml),
-    reportSection(sections.completion, '完成率趋势', completionHtml),
-    reportSection(sections.focus, '专注与时间来源', focusHtml),
-    reportSection(sections.subjects, '科目投入与任务分布', subjectHtml),
-    reportSection(sections.accuracy, '预计时长准确度', accuracyHtml),
-    reportSection(sections.insights, '数据洞察', insightHtml),
-    reportSection(sections.heatmap, '学习热力图', `<div class="chart heatmap-chart">${heatmapSvg(daily)}</div>`),
-    reportSection(sections.goals, '目标与计划版本', goalsHtml),
-    reportSection(sections.quality, '执行状态与计划质量', qualityHtml),
-    reportSection(sections.details, '每日与任务明细', detailsHtml),
-    reportSection(sections.ledger, '时间流水明细', ledgerHtml),
+  const body = selectedCount === 0 ? tr('ex.222') : [
+    reportSection(sections.overview, tr('ex.223'), overviewHtml),
+    reportSection(sections.daily, tr('ex.224'), dailyHtml),
+    reportSection(sections.completion, tr('ex.225'), completionHtml),
+    reportSection(sections.focus, tr('ex.226'), focusHtml),
+    reportSection(sections.subjects, tr('ex.227'), subjectHtml),
+    reportSection(sections.accuracy, tr('ex.228'), accuracyHtml),
+    reportSection(sections.insights, tr('ex.229'), insightHtml),
+    reportSection(sections.heatmap, tr('ex.230'), `<div class="chart heatmap-chart">${heatmapSvg(daily)}</div>`),
+    reportSection(sections.goals, tr('ex.231'), goalsHtml),
+    reportSection(sections.quality, tr('ex.232'), qualityHtml),
+    reportSection(sections.details, tr('ex.233'), detailsHtml),
+    reportSection(sections.ledger, tr('ex.234'), ledgerHtml),
   ].join('')
   const reportStyles = `
     :root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#172033;background:#fff}
@@ -1034,7 +1035,7 @@ export function buildStatisticsReportHtml(state: AppState, range: ExportRange, r
     @media print{body{padding:0;max-width:none}.report-stat,.chart,.report-insights article,.two-column>div{break-inside:avoid}.day-task-grid{grid-template-columns:1fr 1fr}.day-task-card{break-inside:avoid}.report-section{break-before:auto}thead{display:table-header-group}.table-wrap{overflow:visible}.wide-table{min-width:0;font-size:8px}h2{break-after:avoid}}
     @media(max-width:760px){body{padding:20px}.report-stat-grid,.report-stat-grid-four{grid-template-columns:1fr 1fr}.two-column,.report-insights,.day-task-grid{grid-template-columns:1fr}.table-wrap{overflow:auto}table{min-width:650px}}
   `
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(state.settings.planName)} 学习统计报告</title><style>${reportStyles}</style></head><body><header><h1>${html(state.settings.planName)} 学习统计报告</h1><p>${html(range.start)} 至 ${html(range.end)} · 生成于 ${html(generatedAt)}</p><p class="muted">可按需要选择报告模块；实际学习按实际发生日期归属，导出只在本机生成。</p></header>${body}<p class="privacy">报告可能包含个人任务、目标和学习时间。分享前请先检查内容。你可以在打印窗口选择“另存为 PDF”。</p></body></html>`
+  return `<!doctype html><html lang="${getActiveLanguage() === 'en' ? 'en' : 'zh-CN'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(displayPlanName(state.settings.planName))} ${tr('ex.094')}</title><style>${reportStyles}</style></head><body><header><h1>${html(displayPlanName(state.settings.planName))} ${tr('ex.094')}</h1><p>${html(range.start)} ${tr('ex.031')} ${html(range.end)} ${tr('ex.095')} ${html(generatedAt)}</p><p class="muted">${tr('ex.235')}</p></header>${body}<p class="privacy">${tr('ex.119')}</p></body></html>`
 }
 
 export function buildPrintableReportHtml(state: AppState, range: ExportRange, sections?: Partial<StatisticsReportSections>) {
@@ -1046,15 +1047,15 @@ function buildCalendarTaskDetailsHtml(state: AppState, range: ExportRange) {
   const assignments = assignmentsInRange(state, range)
   const rows = assignments.map(assignment => {
     const group = groups.get(assignment.groupId)
-    return `<tr><td>${html(assignment.scheduledDate)}</td><td>${html(group?.subject ?? '其他')}</td><td>${html(assignment.title)}</td><td>${assignment.estimatedMinutes} 分钟</td><td>${html(taskStatusLabel[assignment.status])}</td></tr>`
+    return `<tr><td>${html(assignment.scheduledDate)}</td><td>${html(group?.subject ?? '其他')}</td><td>${html(assignment.title)}</td><td>${assignment.estimatedMinutes} ${tr('ex.077')}</td><td>${html(taskStatusLabel[assignment.status])}</td></tr>`
   }).join('')
-  return `<section class="calendar-details"><h2>每日任务明细</h2><p class="muted">月历格子用于快速浏览；以下清单保留这个月份的全部任务，不会因格子高度被隐藏。</p><div class="table-wrap"><table><thead><tr><th>日期</th><th>科目</th><th>任务</th><th>预计</th><th>状态</th></tr></thead><tbody>${rows || '<tr><td colspan="5">这个月份没有已排期任务。</td></tr>'}</tbody></table></div></section>`
+  return `<section class="calendar-details"><h2>${tr('ex.237')}</h2><p class="muted">${tr('ex.238')}</p><div class="table-wrap"><table><thead><tr><th>${tr('ex.001')}</th><th>${tr('ex.003')}</th><th>${tr('ex.002')}</th><th>${tr('ex.117')}</th><th>${tr('ex.008')}</th></tr></thead><tbody>${rows || tr('ex.236')}</tbody></table></div></section>`
 }
 
 export function buildCalendarPrintHtml(state: AppState, month: string) {
   const range = monthExportRange(month)
   const generatedAt = new Date().toLocaleString('zh-CN')
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(state.settings.planName)} ${html(month)} 月历</title><style>:root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#172033}*{box-sizing:border-box}body{margin:0;padding:22px}header{display:flex;align-items:end;justify-content:space-between;gap:16px;border-bottom:2px solid #2563eb;padding-bottom:14px;margin-bottom:16px}h1{font-size:24px;margin:0 0 5px}h2{font-size:18px;margin:28px 0 9px}.muted{margin:0 0 10px;color:#667085;font-size:11px}.calendar-svg{display:block;width:100%;height:auto}.table-wrap{overflow:hidden;border:1px solid #e1e8f1;border-radius:12px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #e6ebf1;padding:8px 7px;text-align:left}th{background:#f5f8fc;color:#526176;font-weight:700}tbody tr:last-child td{border-bottom:0}.calendar-details{break-before:page}@media print{body{padding:0}@page{size:landscape;margin:10mm}thead{display:table-header-group}}@media(max-width:700px){body{padding:12px}header{display:block}header p{margin-top:6px}}</style></head><body><header><div><h1>${html(state.settings.planName)} · ${html(range.start.slice(0, 7))} 月历</h1><p>月度任务安排、每日容量与科目标记</p></div><p>生成于 ${html(generatedAt)}</p></header>${buildCalendarSvg(state, month, { showAllTasks: false })}${buildCalendarTaskDetailsHtml(state, range)}</body></html>`
+  return `<!doctype html><html lang="${getActiveLanguage() === 'en' ? 'en' : 'zh-CN'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(displayPlanName(state.settings.planName))} ${html(month)} ${tr('ex.239')}</title><style>:root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#172033}*{box-sizing:border-box}body{margin:0;padding:22px}header{display:flex;align-items:end;justify-content:space-between;gap:16px;border-bottom:2px solid #2563eb;padding-bottom:14px;margin-bottom:16px}h1{font-size:24px;margin:0 0 5px}h2{font-size:18px;margin:28px 0 9px}.muted{margin:0 0 10px;color:#667085;font-size:11px}.calendar-svg{display:block;width:100%;height:auto}.table-wrap{overflow:hidden;border:1px solid #e1e8f1;border-radius:12px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #e6ebf1;padding:8px 7px;text-align:left}th{background:#f5f8fc;color:#526176;font-weight:700}tbody tr:last-child td{border-bottom:0}.calendar-details{break-before:page}@media print{body{padding:0}@page{size:landscape;margin:10mm}thead{display:table-header-group}}@media(max-width:700px){body{padding:12px}header{display:block}header p{margin-top:6px}}</style></head><body><header><div><h1>${html(displayPlanName(state.settings.planName))} · ${html(range.start.slice(0, 7))} ${tr('ex.239')}</h1><p>${tr('ex.240')}</p></div><p>${tr('ex.037')} ${html(generatedAt)}</p></header>${buildCalendarSvg(state, month, { showAllTasks: false })}${buildCalendarTaskDetailsHtml(state, range)}</body></html>`
 }
 
 export function exportRangeSummary(state: AppState, range: ExportRange) {

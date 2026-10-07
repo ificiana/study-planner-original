@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { visitorId } from './analytics'
 import { getSession, supabase } from './supabase'
+import { translate, tr, type Language } from './i18n'
 
 export type FeedbackType = 'bug' | 'suggestion' | 'experience' | 'other'
 export type FeedbackStatus = 'new' | 'reviewing' | 'planned' | 'resolved' | 'closed'
@@ -106,11 +107,11 @@ export async function getFeedbackSessionContext(options?: { refresh?: boolean })
   return { session, isAdmin: sessionIsFeedbackAdmin(session) }
 }
 
-export function validateFeedbackScreenshots(files: File[]): string | undefined {
-  if (files.length > MAX_SCREENSHOTS) return `最多上传 ${MAX_SCREENSHOTS} 张截图。`
+export function validateFeedbackScreenshots(files: File[], language: Language = 'zh'): string | undefined {
+  if (files.length > MAX_SCREENSHOTS) return translate(language, 'feedback.screenshot.tooMany', { max: MAX_SCREENSHOTS })
   for (const file of files) {
-    if (!ALLOWED_SCREENSHOT_TYPES.has(file.type)) return '截图仅支持 PNG、JPG/JPEG、WebP。'
-    if (file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) return '每张截图不能超过 5MB。'
+    if (!ALLOWED_SCREENSHOT_TYPES.has(file.type)) return translate(language, 'feedback.screenshot.typeError')
+    if (file.size <= 0 || file.size > MAX_SCREENSHOT_BYTES) return translate(language, 'feedback.screenshot.sizeError')
   }
   return undefined
 }
@@ -153,7 +154,7 @@ export function broadcastFeedbackUnreadCount(count?: number) {
   window.dispatchEvent(new CustomEvent(FEEDBACK_UNREAD_EVENT, { detail: typeof count === 'number' ? { count } : {} }))
 }
 
-async function uploadFeedbackScreenshots(session: Session, feedbackId: string, screenshots: File[], replyId?: string) {
+async function uploadFeedbackScreenshots(session: Session, feedbackId: string, screenshots: File[], replyId?: string, language: Language = 'zh') {
   if (!supabase) return { uploadedCount: 0, failedCount: screenshots.length }
   let uploadedCount = 0
   let failedCount = 0
@@ -174,7 +175,7 @@ async function uploadFeedbackScreenshots(session: Session, feedbackId: string, s
       feedback_id: feedbackId,
       reply_id: replyId ?? null,
       storage_path: storagePath,
-      file_name: file.name.slice(0, 255) || `截图.${screenshotExtension(file)}`,
+      file_name: file.name.slice(0, 255) || translate(language, 'feedback.screenshotFileName', { ext: screenshotExtension(file) }),
       mime_type: file.type,
       size_bytes: file.size,
     })
@@ -188,29 +189,29 @@ async function uploadFeedbackScreenshots(session: Session, feedbackId: string, s
   return { uploadedCount, failedCount }
 }
 
-export async function submitFeedback(input: { type: FeedbackType; content: string; screenshots?: File[] }) {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+export async function submitFeedback(input: { type: FeedbackType; content: string; screenshots?: File[] }, language: Language = 'zh') {
+  if (!supabase) throw new Error(translate(language, 'feedback.serviceUnavailable'))
   const content = input.content.trim()
   const screenshots = input.screenshots ?? []
-  if (!content) throw new Error('请填写反馈内容。')
-  if (content.length > 4000) throw new Error('反馈内容不能超过 4000 个字符。')
-  const screenshotError = validateFeedbackScreenshots(screenshots)
+  if (!content) throw new Error(translate(language, 'feedback.contentRequired'))
+  if (content.length > 4000) throw new Error(translate(language, 'feedback.contentTooLong'))
+  const screenshotError = validateFeedbackScreenshots(screenshots, language)
   if (screenshotError) throw new Error(screenshotError)
 
   const session = await getSession()
-  if (screenshots.length > 0 && !session) throw new Error('登录后才能上传截图。你也可以先移除截图，只提交文字反馈。')
+  if (screenshots.length > 0 && !session) throw new Error(translate(language, 'feedback.loginRequiredForScreenshots'))
 
   const stableVisitorId = typeof window === 'undefined' ? null : visitorId()
 
   if (!session) {
-    if (!stableVisitorId) throw new Error('反馈提交失败，请刷新页面后重试。')
+    if (!stableVisitorId) throw new Error(translate(language, 'feedback.submitFailedRefresh'))
     const result = await supabase.rpc('submit_guest_feedback', {
       p_feedback_type: input.type,
       p_content: content,
       p_visitor_id: stableVisitorId,
       p_guest_secret: guestFeedbackSecret(),
     })
-    if (result.error || !result.data) throw new Error('反馈提交失败，请稍后重试。')
+    if (result.error || !result.data) throw new Error(translate(language, 'feedback.submitFailedRetry'))
     return { id: String(result.data), uploadedCount: 0, failedCount: 0 }
   }
 
@@ -222,9 +223,9 @@ export async function submitFeedback(input: { type: FeedbackType; content: strin
   }
 
   const inserted = await supabase.from('feedback_submissions').insert(basePayload).select('id').single()
-  if (inserted.error || !inserted.data?.id) throw new Error('反馈提交失败，请稍后重试。')
+  if (inserted.error || !inserted.data?.id) throw new Error(translate(language, 'feedback.submitFailedRetry'))
   const feedbackId = String(inserted.data.id)
-  const uploads = await uploadFeedbackScreenshots(session, feedbackId, screenshots)
+  const uploads = await uploadFeedbackScreenshots(session, feedbackId, screenshots, undefined, language)
   broadcastFeedbackUnreadCount()
   return { id: feedbackId, ...uploads }
 }
@@ -247,7 +248,7 @@ function normalizeGuestReply(row: any): FeedbackReply {
   }
 }
 
-async function listGuestReplyAttachments(stableVisitorId: string, guestSecret: string): Promise<FeedbackAttachment[]> {
+async function listGuestReplyAttachments(stableVisitorId: string, guestSecret: string, language: Language = 'zh'): Promise<FeedbackAttachment[]> {
   try {
     const response = await fetch('/api/feedback-guest-attachments', {
       method: 'POST',
@@ -265,7 +266,7 @@ async function listGuestReplyAttachments(stableVisitorId: string, guestSecret: s
         reply_id: String(row.reply_id),
         // 服务端刻意不返回 Storage 路径；游客只拿到 30 分钟签名地址。
         storage_path: '',
-        file_name: String(row.file_name ?? '回复图片'),
+        file_name: String(row.file_name ?? translate(language, 'feedback.replyImageFallbackName')),
         mime_type: String(row.mime_type ?? 'image/jpeg'),
         size_bytes: Number(row.size_bytes ?? 0),
         created_at: String(row.created_at ?? ''),
@@ -278,7 +279,7 @@ async function listGuestReplyAttachments(stableVisitorId: string, guestSecret: s
   }
 }
 
-async function listGuestFeedbackForBrowser(): Promise<FeedbackRecord[]> {
+async function listGuestFeedbackForBrowser(language: Language = 'zh'): Promise<FeedbackRecord[]> {
   if (!supabase || typeof window === 'undefined') return []
   const stableVisitorId = visitorId()
   const secret = guestFeedbackSecret()
@@ -286,7 +287,7 @@ async function listGuestFeedbackForBrowser(): Promise<FeedbackRecord[]> {
     p_visitor_id: stableVisitorId,
     p_guest_secret: secret,
   })
-  if (result.error) throw new Error('本机游客反馈加载失败，请稍后重试。')
+  if (result.error) throw new Error(translate(language, 'feedback.guestHistoryFailed'))
   if (!Array.isArray(result.data)) return []
 
   const records = result.data.map((row: any): FeedbackRecord => ({
@@ -301,7 +302,7 @@ async function listGuestFeedbackForBrowser(): Promise<FeedbackRecord[]> {
   }))
   if (!records.length) return []
 
-  const attachments = await listGuestReplyAttachments(stableVisitorId, secret)
+  const attachments = await listGuestReplyAttachments(stableVisitorId, secret, language)
   return records.map(record => ({
     ...record,
     replies: record.replies.map(reply => ({
@@ -322,12 +323,12 @@ function newestFirst(records: FeedbackRecord[]): FeedbackRecord[] {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 }
 
-export async function listFeedback(scope: 'mine' | 'admin'): Promise<FeedbackRecord[]> {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+export async function listFeedback(scope: 'mine' | 'admin', language: Language = 'zh'): Promise<FeedbackRecord[]> {
+  if (!supabase) throw new Error(translate(language, 'feedback.serviceUnavailable'))
   const { session, isAdmin } = await getFeedbackSessionContext({ refresh: true })
-  if (scope === 'admin' && (!session || !isAdmin)) throw new Error('当前账号没有反馈管理权限。')
+  if (scope === 'admin' && (!session || !isAdmin)) throw new Error(translate(language, 'feedback.noPermission'))
 
-  const guestRows = scope === 'mine' ? await listGuestFeedbackForBrowser() : []
+  const guestRows = scope === 'mine' ? await listGuestFeedbackForBrowser(language) : []
   if (!session) return guestRows
 
   let rows: Array<Omit<FeedbackRecord, 'replies' | 'attachments'>> = []
@@ -336,7 +337,7 @@ export async function listFeedback(scope: 'mine' | 'admin'): Promise<FeedbackRec
       .from('feedback_submissions')
       .select(ADMIN_DETAIL_COLUMNS)
       .order('created_at', { ascending: false })
-    if (submissions.error) throw new Error('反馈详细信息加载失败，请稍后重试。')
+    if (submissions.error) throw new Error(translate(language, 'feedback.detailLoadFailed'))
     rows = (submissions.data ?? []) as unknown as Array<Omit<FeedbackRecord, 'replies' | 'attachments'>>
   } else {
     const submissions = await supabase
@@ -344,7 +345,7 @@ export async function listFeedback(scope: 'mine' | 'admin'): Promise<FeedbackRec
       .select('id,user_id,feedback_type,content,status,created_at')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
-    if (submissions.error) throw new Error('反馈记录加载失败，请稍后重试。')
+    if (submissions.error) throw new Error(translate(language, 'feedback.recordLoadFailed'))
     rows = (submissions.data ?? []) as Array<Omit<FeedbackRecord, 'replies' | 'attachments'>>
   }
 
@@ -355,8 +356,8 @@ export async function listFeedback(scope: 'mine' | 'admin'): Promise<FeedbackRec
     supabase.from('feedback_replies').select('id,feedback_id,content,created_at,author_type,read_at').in('feedback_id', ids).order('created_at', { ascending: true }),
     supabase.from('feedback_attachments').select('id,feedback_id,reply_id,storage_path,file_name,mime_type,size_bytes,created_at').in('feedback_id', ids).order('created_at', { ascending: true }),
   ])
-  if (repliesResult.error) throw new Error('反馈会话加载失败，请稍后重试。')
-  if (attachmentsResult.error) throw new Error('反馈截图加载失败，请稍后重试。')
+  if (repliesResult.error) throw new Error(translate(language, 'feedback.threadLoadFailed'))
+  if (attachmentsResult.error) throw new Error(translate(language, 'feedback.screenshotLoadFailed'))
 
   const replies = (repliesResult.data ?? []).map((reply: any): FeedbackReply => ({
     id: String(reply.id),
@@ -379,64 +380,64 @@ export async function listFeedback(scope: 'mine' | 'admin'): Promise<FeedbackRec
   return scope === 'mine' ? newestFirst([...accountRows, ...guestRows]) : accountRows
 }
 
-export async function replyToFeedback(feedbackId: string, content: string, screenshots: File[] = []) {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+export async function replyToFeedback(feedbackId: string, content: string, screenshots: File[] = [], language: Language = 'zh') {
+  if (!supabase) throw new Error(translate(language, 'feedback.serviceUnavailable'))
   const trimmed = content.trim()
-  if (!trimmed) throw new Error('请填写回复内容。')
-  if (trimmed.length > 4000) throw new Error('回复不能超过 4000 个字符。')
-  const screenshotError = validateFeedbackScreenshots(screenshots)
+  if (!trimmed) throw new Error(translate(language, 'feedback.replyContentRequired'))
+  if (trimmed.length > 4000) throw new Error(translate(language, 'feedback.replyTooLong'))
+  const screenshotError = validateFeedbackScreenshots(screenshots, language)
   if (screenshotError) throw new Error(screenshotError)
   const { session, isAdmin } = await getFeedbackSessionContext({ refresh: true })
-  if (!session || !isAdmin) throw new Error('当前账号没有反馈管理权限。')
+  if (!session || !isAdmin) throw new Error(translate(language, 'feedback.noPermission'))
 
   const inserted = await supabase
     .from('feedback_replies')
     .insert({ feedback_id: feedbackId, content: trimmed, author_type: 'admin' })
     .select('id')
     .single()
-  if (inserted.error || !inserted.data?.id) throw new Error('回复发送失败，请稍后重试。')
-  const uploads = await uploadFeedbackScreenshots(session, feedbackId, screenshots, String(inserted.data.id))
+  if (inserted.error || !inserted.data?.id) throw new Error(translate(language, 'feedback.replySendFailed'))
+  const uploads = await uploadFeedbackScreenshots(session, feedbackId, screenshots, String(inserted.data.id), language)
   const statusUpdate = await supabase.from('feedback_submissions').update({ status: 'reviewing' }).eq('id', feedbackId).eq('status', 'new')
-  if (statusUpdate.error) console.warn('反馈状态未能自动更新为处理中。', statusUpdate.error)
+  if (statusUpdate.error) console.warn(tr('fb.001'), statusUpdate.error)
   broadcastFeedbackUnreadCount()
   return uploads
 }
 
-export async function appendFeedbackReply(record: FeedbackRecord, content: string, screenshots: File[] = []) {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+export async function appendFeedbackReply(record: FeedbackRecord, content: string, screenshots: File[] = [], language: Language = 'zh') {
+  if (!supabase) throw new Error(translate(language, 'feedback.serviceUnavailable'))
   const trimmed = content.trim()
-  if (!trimmed) throw new Error('请填写追加回复。')
-  if (trimmed.length > 4000) throw new Error('追加回复不能超过 4000 个字符。')
-  const screenshotError = validateFeedbackScreenshots(screenshots)
+  if (!trimmed) throw new Error(translate(language, 'feedback.followupContentRequired'))
+  if (trimmed.length > 4000) throw new Error(translate(language, 'feedback.followupTooLong'))
+  const screenshotError = validateFeedbackScreenshots(screenshots, language)
   if (screenshotError) throw new Error(screenshotError)
 
   const session = await getSession()
   if (!record.user_id) {
-    if (screenshots.length > 0) throw new Error('游客追加回复暂不支持图片；你可以继续发送文字。开发者回复中的图片仍可安全查看。')
-    if (typeof window === 'undefined') throw new Error('当前环境无法验证游客反馈身份。')
+    if (screenshots.length > 0) throw new Error(translate(language, 'feedback.guestFollowupNoImages'))
+    if (typeof window === 'undefined') throw new Error(translate(language, 'feedback.envCannotVerifyGuest'))
     const result = await supabase.rpc('reply_to_guest_feedback', {
       p_feedback_id: record.id,
       p_visitor_id: visitorId(),
       p_guest_secret: guestFeedbackSecret(),
       p_content: trimmed,
     })
-    if (result.error || !result.data) throw new Error('追加回复失败，请稍后重试。')
+    if (result.error || !result.data) throw new Error(translate(language, 'feedback.followupFailed'))
     broadcastFeedbackUnreadCount()
     return { uploadedCount: 0, failedCount: 0 }
   }
 
-  if (!session || session.user.id !== record.user_id) throw new Error('请使用提交这条反馈的账号继续回复。')
+  if (!session || session.user.id !== record.user_id) throw new Error(translate(language, 'feedback.wrongAccountForReply'))
   const inserted = await supabase
     .from('feedback_replies')
     .insert({ feedback_id: record.id, content: trimmed, author_type: 'user' })
     .select('id')
     .single()
-  if (inserted.error || !inserted.data?.id) throw new Error('追加回复失败，请稍后重试。')
-  const uploads = await uploadFeedbackScreenshots(session, record.id, screenshots, String(inserted.data.id))
+  if (inserted.error || !inserted.data?.id) throw new Error(translate(language, 'feedback.followupFailed'))
+  const uploads = await uploadFeedbackScreenshots(session, record.id, screenshots, String(inserted.data.id), language)
 
   if (record.status === 'resolved' || record.status === 'closed') {
     const reopened = await supabase.from('feedback_submissions').update({ status: 'reviewing' }).eq('id', record.id)
-    if (reopened.error) console.warn('反馈已追加回复，但状态未能自动重新打开。', reopened.error)
+    if (reopened.error) console.warn(tr('fb.002'), reopened.error)
   }
   broadcastFeedbackUnreadCount()
   return uploads
@@ -481,7 +482,7 @@ export async function markFeedbackRepliesRead(records: FeedbackRecord[]): Promis
   )
   if (accountReplyIds.length) {
     const marked = await supabase.from('feedback_replies').update({ read_at: new Date().toISOString() }).in('id', accountReplyIds)
-    if (marked.error) console.warn('部分反馈回复未能标记为已读。', marked.error)
+    if (marked.error) console.warn(tr('fb.003'), marked.error)
   }
 
   const hasUnreadGuestReply = records.some(record => !record.user_id && record.replies.some(reply => reply.author_type === 'admin' && !reply.read_at))
@@ -490,7 +491,7 @@ export async function markFeedbackRepliesRead(records: FeedbackRecord[]): Promis
       p_visitor_id: visitorId(),
       p_guest_secret: guestFeedbackSecret(),
     })
-    if (markedGuest.error) console.warn('本机游客反馈回复未能标记为已读。', markedGuest.error)
+    if (markedGuest.error) console.warn(tr('fb.004'), markedGuest.error)
   }
 
   const remaining = await getUnreadFeedbackReplyCount()
@@ -505,13 +506,13 @@ export async function markAdminFollowupsRead(records: FeedbackRecord[]) {
   const ids = records.flatMap(record => record.replies.filter(reply => (reply.author_type === 'user' || reply.author_type === 'guest') && !reply.read_at).map(reply => reply.id))
   if (!ids.length) return
   const marked = await supabase.from('feedback_replies').update({ read_at: new Date().toISOString() }).in('id', ids)
-  if (marked.error) console.warn('部分用户追问未能标记为已读。', marked.error)
+  if (marked.error) console.warn(tr('fb.005'), marked.error)
 }
 
-export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus) {
-  if (!supabase) throw new Error('反馈服务暂不可用，请稍后重试。')
+export async function updateFeedbackStatus(feedbackId: string, status: FeedbackStatus, language: Language = 'zh') {
+  if (!supabase) throw new Error(translate(language, 'feedback.serviceUnavailable'))
   const { isAdmin } = await getFeedbackSessionContext({ refresh: true })
-  if (!isAdmin) throw new Error('当前账号没有反馈管理权限。')
+  if (!isAdmin) throw new Error(translate(language, 'feedback.noPermission'))
   const result = await supabase.from('feedback_submissions').update({ status }).eq('id', feedbackId)
-  if (result.error) throw new Error('反馈状态更新失败，请稍后重试。')
+  if (result.error) throw new Error(translate(language, 'feedback.statusUpdateFailed'))
 }

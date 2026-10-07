@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { lockPageScroll } from '../lib/scroll-lock'
+import { useT } from '../lib/i18n'
 
 export function Drawer({
   open,
@@ -17,6 +18,7 @@ export function Drawer({
   onClose: () => void
   wide?: boolean
 }) {
+  const t = useT()
   const titleIdRef = useRef<string>()
   const drawerRef = useRef<HTMLElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -52,7 +54,7 @@ export function Drawer({
     <aside ref={drawerRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className={`side-drawer ${wide ? 'side-drawer-wide' : ''}`} onMouseDown={event => event.stopPropagation()}>
       <header className="drawer-header">
         <div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
-        <button className="icon-button" onClick={onClose} aria-label="关闭"><X size={20}/></button>
+        <button className="icon-button" onClick={onClose} aria-label={t('modal.closeLabel')}><X size={20}/></button>
       </header>
       <div className="drawer-body">{children}</div>
     </aside>

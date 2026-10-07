@@ -2,7 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
-import { AppProvider } from './AppContext'
+import { AppProvider, useApp } from './AppContext'
+import { I18nProvider } from './lib/i18n'
 import { AnalyticsObserver } from './components/AnalyticsObserver'
 import { AnalyticsExtensions } from './components/AnalyticsExtensions'
 import { DataResetCompatibilityGuard } from './components/DataResetCompatibilityGuard'
@@ -16,6 +17,22 @@ import { AppErrorBoundary } from './components/AppErrorBoundary'
 import './analytics.css'
 import './feedback-admin.css'
 
+function LocalizedApp() {
+  const { state } = useApp()
+  return (
+    <I18nProvider language={state.settings.language}>
+      <TutorialRuntimeGuard />
+      <AnalyticsObserver />
+      <AnalyticsExtensions />
+      <DataResetCompatibilityGuard />
+      <EmailVerificationBanner />
+      <FeedbackNotificationObserver />
+      <PwaInstallPrompt />
+      <App />
+    </I18nProvider>
+  )
+}
+
 const updateServiceWorker = registerSW({ immediate: true, onNeedRefresh: announcePwaUpdate })
 configurePwaUpdater(updateServiceWorker)
 initializeAnalytics()
@@ -24,15 +41,8 @@ installVisitLogRetry()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
-      <PwaInstallPrompt />
       <AppProvider>
-        <TutorialRuntimeGuard />
-        <AnalyticsObserver />
-        <AnalyticsExtensions />
-        <DataResetCompatibilityGuard />
-        <EmailVerificationBanner />
-        <FeedbackNotificationObserver />
-        <App />
+        <LocalizedApp />
       </AppProvider>
     </AppErrorBoundary>
   </StrictMode>

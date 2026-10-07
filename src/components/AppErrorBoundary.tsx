@@ -1,7 +1,46 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, Download, RotateCcw } from 'lucide-react'
+import { translate, type Language } from '../lib/i18n'
 
 interface State { error?: Error }
+
+/**
+ * AppErrorBoundary wraps the whole app in main.tsx, including AppProvider and
+ * I18nProvider (see LocalizedApp there) — so a crash can happen before those
+ * providers ever mount, and this class component can't call the useT() hook
+ * anyway. Rather than depend on React context or the app's IndexedDB-backed
+ * settings (which can only be read asynchronously), the fallback below detects
+ * language synchronously from navigator.language and calls the plain
+ * `translate()` helper directly, reusing the same dictionaries as useT().
+ */
+function detectLanguage(): Language {
+  if (typeof navigator === 'undefined') return 'zh'
+  return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
+function ErrorBoundaryFallback({ error, onReload, onOpenRecovery, onDownloadDiagnostics }: {
+  error: Error
+  onReload: () => void
+  onOpenRecovery: () => void
+  onDownloadDiagnostics: () => void
+}) {
+  const language = detectLanguage()
+  const t = (key: string) => translate(language, key)
+  return <main className="fatal-error-page">
+    <section>
+      <AlertTriangle size={42}/>
+      <span>{t('errorBoundary.badge')}</span>
+      <h1>{t('errorBoundary.title')}</h1>
+      <p>{t('errorBoundary.body')}</p>
+      <details><summary>{t('errorBoundary.detailsSummary')}</summary><pre>{error.message}</pre></details>
+      <div className="button-wrap">
+        <button className="primary-button" onClick={onReload}><RotateCcw size={16}/>{t('errorBoundary.reload')}</button>
+        <button className="secondary-button" onClick={onOpenRecovery}>{t('errorBoundary.openRecovery')}</button>
+        <button className="secondary-button" onClick={onDownloadDiagnostics}><Download size={16}/>{t('errorBoundary.downloadDiagnostics')}</button>
+      </div>
+    </section>
+  </main>
+}
 
 export class AppErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = {}
@@ -31,19 +70,11 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
 
   render() {
     if (!this.state.error) return this.props.children
-    return <main className="fatal-error-page">
-      <section>
-        <AlertTriangle size={42}/>
-        <span>应用已进入安全模式</span>
-        <h1>这次错误没有覆盖你的本机数据</h1>
-        <p>你可以重新载入，或进入数据恢复中心下载迁移前、替换前和损坏数据副本。</p>
-        <details><summary>错误详情</summary><pre>{this.state.error.message}</pre></details>
-        <div className="button-wrap">
-          <button className="primary-button" onClick={() => location.reload()}><RotateCcw size={16}/>重新载入</button>
-          <button className="secondary-button" onClick={this.openRecovery}>进入恢复中心</button>
-          <button className="secondary-button" onClick={this.downloadDiagnostics}><Download size={16}/>下载诊断</button>
-        </div>
-      </section>
-    </main>
+    return <ErrorBoundaryFallback
+      error={this.state.error}
+      onReload={() => location.reload()}
+      onOpenRecovery={this.openRecovery}
+      onDownloadDiagnostics={this.downloadDiagnostics}
+    />
   }
 }

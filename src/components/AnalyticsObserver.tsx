@@ -1,3 +1,4 @@
+import { variantsOfZh, zhHeading } from '../lib/i18n'
 import { useEffect, useRef } from 'react'
 import { useApp } from '../AppContext'
 import { recordAnalyticsEvent, recordAnalyticsEventOnce, recordAppPageView } from '../lib/analytics'
@@ -99,7 +100,7 @@ export function AnalyticsObserver() {
       scanFrame = undefined
       const timerPage = document.querySelector('.focus-timer-page')
       const heading = document.querySelector('.page-heading h1')?.textContent?.trim() ?? ''
-      const page = timerPage ? 'timer' : PAGE_BY_HEADING[heading]
+      const page = timerPage ? 'timer' : PAGE_BY_HEADING[zhHeading(heading)]
       if (page && page !== lastPage) {
         lastPage = page
         void recordAppPageView(page)
@@ -120,7 +121,7 @@ export function AnalyticsObserver() {
 
     const onClick = (event: MouseEvent) => {
       const button = (event.target as Element | null)?.closest('button')
-      if (!button || button.textContent?.trim() !== '解析并预览') return
+      if (!button || !variantsOfZh('解析并预览').includes(button.textContent?.trim() ?? '')) return
       parsePending = true
       if (parseResetTimer) window.clearTimeout(parseResetTimer)
       parseResetTimer = window.setTimeout(() => { parsePending = false; parseResetTimer = undefined }, 10_000)

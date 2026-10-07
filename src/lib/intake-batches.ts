@@ -1,15 +1,16 @@
 import type { IntakeBatch, IntakeBatchSource, IntakeItemKind, IntakeTaskGroupDraft, TaskGroupDraft } from '../types'
 import { uid } from './id'
+import { translate, type Language } from './i18n'
 
 /**
  * Lightweight intake mutations intentionally live outside the scheduler.
  * They can be benchmarked independently and must never create assignments,
  * plan events, conflict exceptions, or scheduling proposals.
  */
-export function createIntakeBatchRecord(name: string | undefined, now: string, id = uid('intake')): IntakeBatch {
+export function createIntakeBatchRecord(name: string | undefined, now: string, id = uid('intake'), language: Language = 'zh'): IntakeBatch {
   return {
     id,
-    name: name?.trim() || `任务录入 ${new Date(now).toLocaleDateString('zh-CN')}`,
+    name: name?.trim() || translate(language, 'intakeBatches.defaultName', { date: new Date(now).toLocaleDateString(language === 'en' ? 'en-US' : 'zh-CN') }),
     status: 'editing',
     source: 'manual',
     taskGroups: [],

@@ -7,111 +7,114 @@ import calendarImage from '../../docs/images/03-calendar-month-view.png'
 import loadImage from '../../docs/images/06-daily-workload-before-after.png'
 import reviewImage from '../../docs/images/16-review-summary-and-unfinished-tasks.png'
 import { GITHUB_REPO_URL } from '../lib/constants'
+import { useT } from '../lib/i18n'
 import { PwaInstallGuideSection } from './PwaInstallGuide'
 
 type GuidePageId = 'today' | 'calendar' | 'tasks' | 'intake' | 'goals' | 'stats' | 'export' | 'settings'
 
-const chapters = [
-  { id: 'install-app', label: '添加到主屏幕' },
-  { id: 'first-plan', label: '第一次建计划' },
-  { id: 'daily-use', label: '每天怎么用' },
-  { id: 'changes', label: '计划变化时' },
-  { id: 'concepts', label: '指标与数据' },
-]
-
 export function GuidePage({ onNavigate, onStartTutorial }: { onNavigate: (page: GuidePageId) => void; onStartTutorial?: () => void }) {
+  const t = useT()
+
+  const chapters = [
+    { id: 'install-app', label: t('guidePage.chapterInstall') },
+    { id: 'first-plan', label: t('guidePage.chapterFirstPlan') },
+    { id: 'daily-use', label: t('guidePage.chapterDailyUse') },
+    { id: 'changes', label: t('guidePage.chapterChanges') },
+    { id: 'concepts', label: t('guidePage.chapterConcepts') },
+  ]
+
   return <div className="guide-page">
     <section className="guide-hero">
       <div className="guide-hero-copy">
-        <span className="guide-eyebrow"><BookOpen size={15}/>使用教程</span>
-        <h2>先录入任务，再让计划跟着你走</h2>
-        <p>这不是一张静态待办清单。你先收集任务、设置可用时间，再用今日执行和复盘记录真实进展。现实变化时，系统只在你确认后修复计划。</p>
+        <span className="guide-eyebrow"><BookOpen size={15}/>{t('guidePage.heroEyebrow')}</span>
+        <h2>{t('guidePage.heroTitle')}</h2>
+        <p>{t('guidePage.heroText')}</p>
         <div className="guide-hero-actions">
-          <button type="button" className="primary-button" onClick={() => onNavigate('intake')}><Inbox size={16}/>开始录入任务</button>
-          {onStartTutorial && <button type="button" className="secondary-button" onClick={onStartTutorial}><RefreshCw size={16}/>打开互动教程</button>}
-          <a className="secondary-button" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"><Github size={16}/>查看 GitHub 仓库<ArrowUpRight size={14}/></a>
+          <button type="button" className="primary-button" onClick={() => onNavigate('intake')}><Inbox size={16}/>{t('guidePage.startIntake')}</button>
+          {onStartTutorial && <button type="button" className="secondary-button" onClick={onStartTutorial}><RefreshCw size={16}/>{t('guidePage.openTutorial')}</button>}
+          <a className="secondary-button" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"><Github size={16}/>{t('guidePage.viewRepo')}<ArrowUpRight size={14}/></a>
         </div>
-        {onStartTutorial && <p className="muted-text">互动教程使用独立演示数据；步骤提示可以随时收起，并通过右下角“重新打开提示”继续。</p>}
+        {onStartTutorial && <p className="muted-text">{t('guidePage.tutorialNote')}</p>}
       </div>
       <figure className="guide-hero-figure">
-        <img src={todayImage} alt="今日执行页面，展示当天任务、实际用时与完成入口" />
-        <figcaption><span>今日执行</span><strong>计划、计时和复盘集中在同一处</strong></figcaption>
+        <img src={todayImage} alt={t('guidePage.todayImageAlt')} />
+        <figcaption><span>{t('guidePage.todayFigureLabel')}</span><strong>{t('guidePage.todayFigureCaption')}</strong></figcaption>
       </figure>
     </section>
 
-    <nav className="guide-chapters" aria-label="教程章节">
+    <nav className="guide-chapters" aria-label={t('guidePage.chaptersAriaLabel')}>
       {chapters.map(chapter => <a key={chapter.id} href={`#${chapter.id}`}>{chapter.label}</a>)}
     </nav>
 
     <PwaInstallGuideSection />
 
     <section className="guide-section" id="first-plan">
-      <GuideHeading eyebrow="从空白开始" title="建立第一份计划" text="收集阶段只保存和校验，不会因为每新增一项就重算整份计划。任务收齐后，再统一预览排期结果。" />
+      <GuideHeading eyebrow={t('guidePage.firstPlanEyebrow')} title={t('guidePage.firstPlanTitle')} text={t('guidePage.firstPlanText')} />
       <div className="guide-story guide-story-image-right">
         <div className="guide-story-copy">
           <GuideSteps steps={[
-            ['进入录入', '添加独立任务或任务组，也可以使用自然语言、粘贴清单、导入 CSV 或 XLSX。中途退出后，下次仍能继续这个批次。'],
-            ['补充约束', '设置任务数量、单项时长、目标期限、日期偏好和每天最多安排几项。'],
-            ['统一排期', '点击生成第一份计划，比较候选方案的移动、超载和目标风险，确认后才写入正式计划。'],
+            [t('guidePage.step1Title'), t('guidePage.step1Text')],
+            [t('guidePage.step2Title'), t('guidePage.step2Text')],
+            [t('guidePage.step3Title'), t('guidePage.step3Text')],
           ]} />
-          <button type="button" className="guide-card-action" onClick={() => onNavigate('intake')}>打开录入<ArrowUpRight size={14}/></button>
+          <button type="button" className="guide-card-action" onClick={() => onNavigate('intake')}>{t('guidePage.openIntake')}<ArrowUpRight size={14}/></button>
         </div>
-        <GuideFigure src={calendarImage} alt="月历页面，展示任务在计划周期内的日期分布" label="排期完成后" caption="在月历中检查每天的任务和容量" />
+        <GuideFigure src={calendarImage} alt={t('guidePage.calendarImageAlt')} label={t('guidePage.calendarFigureLabel')} caption={t('guidePage.calendarFigureCaption')} />
       </div>
     </section>
 
     <section className="guide-section" id="daily-use">
-      <GuideHeading eyebrow="日常闭环" title="每天只做三件事" text="开始学习、记录真实用时、结束时处理未完成任务。实际时间归到你正在记录的日期，而不是操作发生的系统日期。" />
+      <GuideHeading eyebrow={t('guidePage.dailyUseEyebrow')} title={t('guidePage.dailyUseTitle')} text={t('guidePage.dailyUseText')} />
       <div className="guide-flow-grid">
-        <GuideFlowCard icon={Timer} title="开始执行" text="在今日页面开始计时，也可以手动完成或记录部分进度。" />
-        <GuideFlowCard icon={CheckCircle2} title="留下真实记录" text="昨天的学习补录到昨天；今天继续同一任务的用时则计入今天。" />
-        <GuideFlowCard icon={ListChecks} title="结束并复盘" text="逐项决定未完成任务顺延、保留原日期，还是稍后再处理。" />
-        <GuideFlowCard icon={BarChart3} title="查看趋势" text="统计按实际归属日汇总，计划基线不会被后来的重排悄悄改写。" />
+        <GuideFlowCard icon={Timer} title={t('guidePage.flowStartTitle')} text={t('guidePage.flowStartText')} />
+        <GuideFlowCard icon={CheckCircle2} title={t('guidePage.flowRecordTitle')} text={t('guidePage.flowRecordText')} />
+        <GuideFlowCard icon={ListChecks} title={t('guidePage.flowReviewTitle')} text={t('guidePage.flowReviewText')} />
+        <GuideFlowCard icon={BarChart3} title={t('guidePage.flowStatsTitle')} text={t('guidePage.flowStatsText')} />
       </div>
       <div className="guide-story guide-story-two-images">
-        <GuideFigure src={todayImage} alt="今日任务执行页面" label="白天" caption="计时、完成和部分完成" />
-        <GuideFigure src={reviewImage} alt="结束复盘弹窗，展示计划时间、实际时间和未完成任务处理" label="结束时" caption="确认真实结果并处理未完成任务" />
+        <GuideFigure src={todayImage} alt={t('guidePage.todayImageAlt')} label={t('guidePage.todayFigureLabel2')} caption={t('guidePage.todayFigureCaption2')} />
+        <GuideFigure src={reviewImage} alt={t('guidePage.reviewImageAlt')} label={t('guidePage.reviewFigureLabel')} caption={t('guidePage.reviewFigureCaption')} />
       </div>
     </section>
 
     <section className="guide-section" id="changes">
-      <GuideHeading eyebrow="突发情况" title="计划不合适时，先看影响再调整" text="临时请假、突然增加任务、目标提前，或想把未来任务移到今天，都从一次明确的调整开始。" />
+      <GuideHeading eyebrow={t('guidePage.changesEyebrow')} title={t('guidePage.changesTitle')} text={t('guidePage.changesText')} />
       <div className="guide-story guide-story-image-left">
-        <GuideFigure src={loadImage} alt="计划调整前后的日期负载对比" label="方案预览" caption="删除内容红色划线，新增内容绿色标记" />
+        <GuideFigure src={loadImage} alt={t('guidePage.loadImageAlt')} label={t('guidePage.loadFigureLabel')} caption={t('guidePage.loadFigureCaption')} />
         <div className="guide-story-copy">
           <GuideSteps steps={[
-            ['说明发生了什么', '点击顶部“计划有变化”，选择执行偏差、太累、未来重排或当前冲突。'],
-            ['比较候选方案', '少改、均衡、目标优先和休息优先代表不同取舍，不是四个重复按钮。'],
-            ['处理硬冲突', '系统不会静默突破锁定、日期保护或容量。确实需要时，可以只对本轮、指定任务授权例外。'],
+            [t('guidePage.changesStep1Title'), t('guidePage.changesStep1Text')],
+            [t('guidePage.changesStep2Title'), t('guidePage.changesStep2Text')],
+            [t('guidePage.changesStep3Title'), t('guidePage.changesStep3Text')],
           ]} />
-          <button type="button" className="guide-card-action" onClick={() => onNavigate('stats')}>查看统计与复盘<ArrowUpRight size={14}/></button>
+          <button type="button" className="guide-card-action" onClick={() => onNavigate('stats')}>{t('guidePage.viewStats')}<ArrowUpRight size={14}/></button>
         </div>
       </div>
     </section>
 
     <section className="guide-section guide-concepts-section" id="concepts">
-      <GuideHeading eyebrow="口径说明" title="三个容易混淆的指标" text="它们回答的是不同问题，放在一起才知道今天是否真的超载。" />
+      <GuideHeading eyebrow={t('guidePage.conceptsEyebrow')} title={t('guidePage.conceptsTitle')} text={t('guidePage.conceptsText')} />
       <div className="guide-concept-grid">
-        <article><span className="guide-concept-label">原计划</span><strong>这一天原本准备学多少</strong><p>来自当天首次形成的计划基线。后来挪动任务不会重写历史，所以适合用来复盘计划质量。</p></article>
-        <article><span className="guide-concept-label guide-concept-label-blue">已发生实际</span><strong>这一天实际学了多少</strong><p>按记录的归属日期汇总当天总用时，包括计时、手动记录、部分完成和补录。</p></article>
-        <article><span className="guide-concept-label guide-concept-label-amber">执行负载 / 容量</span><strong>这一天还能不能装下</strong><p>执行负载把已发生实际和仍需执行的计划放在一起；容量是这一天可用于学习的总时间。</p></article>
+        <article><span className="guide-concept-label">{t('guidePage.conceptPlanLabel')}</span><strong>{t('guidePage.conceptPlanStrong')}</strong><p>{t('guidePage.conceptPlanText')}</p></article>
+        <article><span className="guide-concept-label guide-concept-label-blue">{t('guidePage.conceptActualLabel')}</span><strong>{t('guidePage.conceptActualStrong')}</strong><p>{t('guidePage.conceptActualText')}</p></article>
+        <article><span className="guide-concept-label guide-concept-label-amber">{t('guidePage.conceptLoadLabel')}</span><strong>{t('guidePage.conceptLoadStrong')}</strong><p>{t('guidePage.conceptLoadText')}</p></article>
       </div>
     </section>
 
     <section className="guide-section guide-entry-section">
-      <GuideHeading eyebrow="快速入口" title="按你现在要做的事选择" text="不必先理解所有规则，先完成眼前动作即可。" />
+      <GuideHeading eyebrow={t('guidePage.entryEyebrow')} title={t('guidePage.entryTitle')} text={t('guidePage.entryText')} />
       <div className="guide-entry-list">
-        <GuideEntry icon={CheckCircle2} title="现在开始学习" detail="进入今日，直接计时或更新进度。" action="打开今日" onAction={() => onNavigate('today')} />
-        <GuideEntry icon={Inbox} title="加入一批新任务" detail="创建录入批次，收齐后再统一安排。" action="打开录入" onAction={() => onNavigate('intake')} />
-        <GuideEntry icon={CalendarDays} title="检查未来安排" detail="在月历查看每日任务、容量和日期约束。" action="打开月历" onAction={() => onNavigate('calendar')} />
-        <GuideEntry icon={Target} title="修改目标期限" detail="调整期望日期、最晚日期和完成条件。" action="管理目标" onAction={() => onNavigate('goals')} />
-        <GuideEntry icon={BarChart3} title="导出月历或统计" detail="下载 CSV、ICS、时间流水或打印报告。" action="打开导出" onAction={() => onNavigate('export')} />
+        <GuideEntry icon={CheckCircle2} title={t('guidePage.entryTodayTitle')} detail={t('guidePage.entryTodayDetail')} action={t('guidePage.entryTodayAction')} onAction={() => onNavigate('today')} />
+        <GuideEntry icon={Inbox} title={t('guidePage.entryIntakeTitle')} detail={t('guidePage.entryIntakeDetail')} action={t('guidePage.entryIntakeAction')} onAction={() => onNavigate('intake')} />
+        <GuideEntry icon={CalendarDays} title={t('guidePage.entryCalendarTitle')} detail={t('guidePage.entryCalendarDetail')} action={t('guidePage.entryCalendarAction')} onAction={() => onNavigate('calendar')} />
+        <GuideEntry icon={Target} title={t('guidePage.entryGoalsTitle')} detail={t('guidePage.entryGoalsDetail')} action={t('guidePage.entryGoalsAction')} onAction={() => onNavigate('goals')} />
+        <GuideEntry icon={BarChart3} title={t('guidePage.entryExportTitle')} detail={t('guidePage.entryExportDetail')} action={t('guidePage.entryExportAction')} onAction={() => onNavigate('export')} />
       </div>
     </section>
 
     <section className="guide-principles">
-      <div><span className="guide-eyebrow">使用原则</span><h3>少改动，讲清楚，不替你确认。</h3><p>锁定任务、手动安排、受保护日期和已经发生的实际记录会优先保留。系统调整会先生成候选方案，应用前仍能返回修改。</p></div>
-      <a className="guide-repo-link" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"><Github size={18}/><span><strong>需要更完整的背景？</strong><small>在 GitHub 查看 README、版本记录和源代码</small></span><ArrowUpRight size={17}/></a>
+      <div><span className="guide-eyebrow">{t('guidePage.principlesEyebrow')}</span><h3>{t('guidePage.principlesTitle')}</h3><p>{t('guidePage.principlesText')}</p></div>
+      <a className="guide-repo-link" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"><Github size={18}/><span><strong>{t('guidePage.repoLinkTitle')}</strong><small>{t('guidePage.repoLinkText')}</small></span><ArrowUpRight size={17}/></a>
     </section>
   </div>
 }

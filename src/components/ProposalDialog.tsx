@@ -13,12 +13,13 @@ import type {
   SchedulingProposal,
 } from '../types'
 import { Modal } from './Modal'
+import { useT } from '../lib/i18n'
 import { fmtDate, minutesText } from '../lib/date'
 import { reviseSchedulingProposal, type ProposalMovementRevision } from '../lib/planner'
 import { categoryLabel, conflictProfile, isBlockingDecisionIssue, isTodayIncomingIssue, preferredAutoResolution, resolutionLabel } from '../lib/conflicts'
 
-const preferenceLabels: Record<string, string> = {
-  preserve: '尽量保持当前计划', balanced: '均衡执行', goal: '优先保障目标', rest: '增加休息空间'
+const preferenceKeys: Record<string, string> = {
+  preserve: 'prop.pref.preserve', balanced: 'prop.pref.balanced', goal: 'prop.pref.goal', rest: 'prop.pref.rest'
 }
 
 function recommendedProposal(proposals: SchedulingProposal[], event?: PlanChangeEvent) {
@@ -40,7 +41,7 @@ function exceptionId(item: ConstraintException, index: number) {
 
 function localActionLabel(event: PlanChangeEvent) {
   const requested = typeof event.metadata?.requestedChangeLabel === 'string' ? event.metadata.requestedChangeLabel.trim() : ''
-  return requested ? requested.replace(/^仅/, '') : event.title
+  return requested ? requested.replace(/^(仅|Only )/, '') : event.title
 }
 
 export function ProposalDialog({
@@ -80,6 +81,7 @@ export function ProposalDialog({
   tutorialMode?: boolean
   onTutorialBlocked?: (message?: string) => void
 }) {
+  const t = useT()
   const initial = recommendedProposal(proposals, event)
   const explicitLocalOperation = event.metadata?.explicitLocalOperation === true || event.metadata?.operationScope === 'requested-change-only'
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount(proposals))
@@ -156,13 +158,13 @@ export function ProposalDialog({
     else onGenerateMore?.()
   }
   const keepLabel = event.metadata?.containsReviewRecord
-    ? '只保存复盘，不顺延任务'
+    ? t('prop.keep.reviewOnly')
     : event.type === 'bulk-move'
-      ? '不执行这次批量移动'
+      ? t('prop.keep.noBulk')
       : event.type === 'availability-change' && event.metadata?.pureRelaxation !== true
-        ? '保存可用时间，暂不移动任务'
+        ? t('prop.keep.saveAvailability')
         : event.type === 'new-task-insertion' || event.type === 'task-group-size-increase'
-          ? '创建并保留为未安排'
+          ? t('prop.keep.createUnscheduled')
           : undefined
 
   const focusDecisionPanel = () => {
@@ -190,58 +192,58 @@ export function ProposalDialog({
   }
 
   const primaryLabel = !selected
-    ? '查看可解决方式'
+    ? t('prop.primary.viewOptions')
     : unresolvedCount > 0
-      ? `处理 ${unresolvedCount} 个待决定问题`
+      ? t('prop.primary.resolveN', { n: unresolvedCount })
       : externalDecision === 'change-goal'
-        ? '返回修改目标'
+        ? t('prop.primary.backToGoal')
         : externalDecision === 'change-capacity'
-          ? '返回修改可用时间'
+          ? t('prop.primary.backToCapacity')
           : requiresRecalculation
-            ? '按这些选择重新计算'
+            ? t('prop.primary.recalculate')
             : explicitLocalOperation
               ? requestedActionLabel
             : selected.movements.length || selected.structuralChanges.length
-              ? '应用预览中的改动'
-              : '确认并保存'
+              ? t('prop.primary.applyChanges')
+              : t('prop.primary.confirmSave')
 
   const footer = <div className="proposal-footer-actions">
-    <button className="proposal-cancel-action" onClick={onClose}>取消</button>
-    {keepLabel && <button className={`secondary-button proposal-keep-action ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中先应用推荐方案') : onKeep()}>{keepLabel}</button>}
+    <button className="proposal-cancel-action" onClick={onClose}>{t('common.cancel')}</button>
+    {keepLabel && <button className={`secondary-button proposal-keep-action ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.applyRecommended')) : onKeep()}>{keepLabel}</button>}
     <button className="primary-button" data-tutorial-target="proposal-primary" data-tutorial-action="proposal-primary" onClick={handlePrimary}>{primaryLabel}</button>
   </div>
 
-  return <Modal open={open} title="计划调整预览" onClose={onClose} footer={footer} wide mobileFullscreen className="proposal-modal">
+  return <Modal open={open} title={t('prop.title')} onClose={onClose} footer={footer} wide mobileFullscreen className="proposal-modal">
     <div className="proposal-dialog-shell">
     <section className={`proposal-event ${explicitLocalOperation ? 'proposal-event-local' : ''}`}>
-      <div className="proposal-event-heading"><span className="proposal-event-kicker">{explicitLocalOperation ? '本次操作' : '发生了什么'}</span><strong>{event.title}</strong></div>
+      <div className="proposal-event-heading"><span className="proposal-event-kicker">{explicitLocalOperation ? t('prop.event.thisOperation') : t('prop.event.whatHappened')}</span><strong>{event.title}</strong></div>
       <p>{event.description}</p>
-      {!explicitLocalOperation && <div className="proposal-policy-note"><strong>本次处理方式</strong><span>{policy.explanation}</span></div>}
-      {explicitLocalOperation && <div className="proposal-local-principle"><strong>只执行本次调整</strong><span>其他任务保持不变，计划原有问题暂不处理。</span></div>}
-      {decisionSummary && <div className="proposal-decision-summary"><strong>已按你的选择重新计算</strong><span>{decisionSummary}</span></div>}
+      {!explicitLocalOperation && <div className="proposal-policy-note"><strong>{t('prop.event.policy')}</strong><span>{policy.explanation}</span></div>}
+      {explicitLocalOperation && <div className="proposal-local-principle"><strong>{t('prop.event.localOnly')}</strong><span>{t('prop.event.localOnlyDesc')}</span></div>}
+      {decisionSummary && <div className="proposal-decision-summary"><strong>{t('prop.event.recalculated')}</strong><span>{decisionSummary}</span></div>}
     </section>
 
     {directConflict && <section className="proposal-direct-conflict">
-      <div><strong>你的原选择中发现 {directConflict.issues.length} 个问题</strong><span>合法选择保持不变；冲突项可逐项接受例外、保持原状或交给系统换日。</span></div>
-      <button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中先按推荐方案继续') : selectProposal(directConflict.id)}>查看并处理具体问题</button>
+      <div><strong>{t('prop.direct.found', { n: directConflict.issues.length })}</strong><span>{t('prop.direct.desc')}</span></div>
+      <button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.continueRecommended')) : selectProposal(directConflict.id)}>{t('prop.direct.view')}</button>
     </section>}
 
-    {!proposals.length && <section id="proposal-no-solution" className="empty-state proposal-no-solution"><h3>当前条件下还没有可执行方案</h3><p>系统没有强行塞入冲突日期。你可以继续扩大搜索范围，或返回调整目标与可用时间；每次修改仍会重新预览。</p><div className="proposal-no-solution-actions">{onGenerateMore && <button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中暂不扩大搜索范围') : onGenerateMore()}>扩大范围继续寻找</button>}<button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中暂不修改可用时间') : onRequestExternalChange?.('change-capacity')}>调整可用时间</button><button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中暂不修改目标') : onRequestExternalChange?.('change-goal')}>调整目标</button></div></section>}
+    {!proposals.length && <section id="proposal-no-solution" className="empty-state proposal-no-solution"><h3>{t('prop.none.title')}</h3><p>{t('prop.none.desc')}</p><div className="proposal-no-solution-actions">{onGenerateMore && <button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.noWiden')) : onGenerateMore()}>{t('prop.none.widen')}</button>}<button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.noCapacity')) : onRequestExternalChange?.('change-capacity')}>{t('prop.none.adjustCapacity')}</button><button type="button" className={`secondary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.noGoal')) : onRequestExternalChange?.('change-goal')}>{t('prop.none.adjustGoal')}</button></div></section>}
 
     {!singleLocalProposal && <section className="proposal-options-heading">
-      <div><strong>{tutorialMode ? '确认教程推荐方案' : proposals.length > 1 ? '选择一个方案' : '确认本次改动'}</strong><span>任何方案都只会在你确认后执行；存在冲突时也不会只留下灰色按钮。</span></div>
-      {proposals.length > 1 && <small>已生成 {proposals.length} 个实质不同方案{tutorialMode ? ' · 教程固定使用推荐方案' : ''}</small>}
+      <div><strong>{tutorialMode ? t('prop.opts.tutorial') : proposals.length > 1 ? t('prop.opts.choose') : t('prop.opts.confirm')}</strong><span>{t('prop.opts.desc')}</span></div>
+      {proposals.length > 1 && <small>{t('prop.opts.generated', { n: proposals.length })}{tutorialMode ? ` · ${t('prop.opts.tutorialFixed')}` : ''}</small>}
     </section>}
     {!singleLocalProposal && <div className="proposal-choice-list">
       {displayedProposals.map(proposal => {
         const display = drafts[proposal.id] ?? proposal
         const selectedChoice = selectedBase?.id === proposal.id
         const tutorialBlockedChoice = tutorialMode && proposal.id !== recommendedId
-        return <button key={proposal.id} aria-disabled={tutorialBlockedChoice || undefined} className={`proposal-choice ${selectedChoice ? 'selected' : ''} ${proposal.infeasible ? 'proposal-choice-infeasible' : ''} ${tutorialBlockedChoice ? 'tutorial-disabled-control' : ''}`} onClick={() => tutorialBlockedChoice ? onTutorialBlocked?.('教程中固定使用推荐方案，其他方案仍保留展示') : selectProposal(proposal.id)}>
-          <div className="proposal-choice-title"><div><strong>{display.title}</strong><small>{preferenceLabels[display.preference] ?? display.preference} · 影响{display.metrics.impactLevel === 'small' ? '较小' : display.metrics.impactLevel === 'medium' ? '中等' : '较大'}</small></div><span>{proposal.id === recommendedId ? '推荐' : selectedChoice ? '已选择' : '可选'}</span></div>
-          <div className="proposal-choice-metrics"><span>{display.metrics.movedTaskCount} 项移动</span><span>{display.metrics.affectedDateCount} 天变化</span><span>{display.metrics.issueCount} 个本次问题</span>{display.exceptions.length > 0 && <em>{display.exceptions.length} 项例外需逐项决定</em>}</div>
-          {cumulativeVsBaseline && (cumulativeVsBaseline.moved > 0 || cumulativeVsBaseline.scheduledNew > 0 || cumulativeVsBaseline.unscheduled > 0) && <div className="proposal-choice-cumulative">累计相对正式计划：移动 {cumulativeVsBaseline.moved} 项 · 新增已排 {cumulativeVsBaseline.scheduledNew} 项 · 仍未安排 {cumulativeVsBaseline.unscheduled} 项</div>}
-          {display.issueDelta && explicitLocalOperation && <div className="proposal-existing-issue-summary"><span>计划原有 {display.issueDelta.preExistingCount} 个硬问题</span><span>本次解决 {display.issueDelta.resolvedPreExistingCount} 个</span><span>本次新增/恶化 {display.issueDelta.newOrWorsenedCount} 个</span></div>}
+        return <button key={proposal.id} aria-disabled={tutorialBlockedChoice || undefined} className={`proposal-choice ${selectedChoice ? 'selected' : ''} ${proposal.infeasible ? 'proposal-choice-infeasible' : ''} ${tutorialBlockedChoice ? 'tutorial-disabled-control' : ''}`} onClick={() => tutorialBlockedChoice ? onTutorialBlocked?.(t('prop.tut.fixedRecommended')) : selectProposal(proposal.id)}>
+          <div className="proposal-choice-title"><div><strong>{display.title}</strong><small>{preferenceKeys[display.preference] ? t(preferenceKeys[display.preference]) : display.preference} · {t('prop.choice.impact', { level: t(display.metrics.impactLevel === 'small' ? 'prop.impact.small' : display.metrics.impactLevel === 'medium' ? 'prop.impact.medium' : 'prop.impact.large') })}</small></div><span>{proposal.id === recommendedId ? t('prop.choice.recommended') : selectedChoice ? t('prop.choice.selected') : t('prop.choice.available')}</span></div>
+          <div className="proposal-choice-metrics"><span>{t('prop.choice.moved', { n: display.metrics.movedTaskCount })}</span><span>{t('prop.choice.daysChanged', { n: display.metrics.affectedDateCount })}</span><span>{t('prop.choice.issues', { n: display.metrics.issueCount })}</span>{display.exceptions.length > 0 && <em>{t('prop.choice.exceptions', { n: display.exceptions.length })}</em>}</div>
+          {cumulativeVsBaseline && (cumulativeVsBaseline.moved > 0 || cumulativeVsBaseline.scheduledNew > 0 || cumulativeVsBaseline.unscheduled > 0) && <div className="proposal-choice-cumulative">{t('prop.choice.cumulative', cumulativeVsBaseline)}</div>}
+          {display.issueDelta && explicitLocalOperation && <div className="proposal-existing-issue-summary"><span>{t('prop.delta.existing', { n: display.issueDelta.preExistingCount })}</span><span>{t('prop.delta.resolved', { n: display.issueDelta.resolvedPreExistingCount })}</span><span>{t('prop.delta.newOrWorse', { n: display.issueDelta.newOrWorsenedCount })}</span></div>}
           <p>{display.infeasible ? display.infeasibleReason : display.description}</p>
         </button>
       })}
@@ -249,8 +251,8 @@ export function ProposalDialog({
 
     {singleLocalProposal && selected && <LocalOperationResult proposal={selected} actionLabel={requestedActionLabel}/>} 
 
-    {!singleLocalProposal && (visibleCount < proposals.length || onGenerateMore) && <button className={`secondary-button proposal-more ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} disabled={!tutorialMode && Boolean(moreExhausted && visibleCount >= proposals.length)} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中不扩大方案范围，避免剧情发生变化') : showMore()}>{tutorialMode ? '生成更多不同方案（教程中暂不可用）' : visibleCount < proposals.length ? `比较另外 ${proposals.length - visibleCount} 个已生成方案` : moreExhausted ? '已检查更大范围，没有更多实质不同方案' : '生成更多不同方案'}</button>}
-    {singleLocalProposal && onGenerateMore && <div className="proposal-local-alternatives"><div><strong>需要同时处理计划原有问题？</strong><span>当前保存只完成本次操作；查看其他方案后，才会扩大调整范围。</span></div><button type="button" className={`text-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} disabled={!tutorialMode && moreExhausted} onClick={() => tutorialMode ? onTutorialBlocked?.('教程中暂不扩大调整范围') : onGenerateMore()}>{tutorialMode ? '查看其他方案（教程中暂不可用）' : moreExhausted ? '没有更多实质不同方案' : '查看其他方案'}</button></div>}
+    {!singleLocalProposal && (visibleCount < proposals.length || onGenerateMore) && <button className={`secondary-button proposal-more ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} disabled={!tutorialMode && Boolean(moreExhausted && visibleCount >= proposals.length)} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.noMorePlans')) : showMore()}>{tutorialMode ? t('prop.more.tutorial') : visibleCount < proposals.length ? t('prop.more.compare', { n: proposals.length - visibleCount }) : moreExhausted ? t('prop.more.exhausted') : t('prop.more.generate')}</button>}
+    {singleLocalProposal && onGenerateMore && <div className="proposal-local-alternatives"><div><strong>{t('prop.alt.title')}</strong><span>{t('prop.alt.desc')}</span></div><button type="button" className={`text-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} disabled={!tutorialMode && moreExhausted} onClick={() => tutorialMode ? onTutorialBlocked?.(t('prop.tut.noWidenAdjust')) : onGenerateMore()}>{tutorialMode ? t('prop.alt.tutorial') : moreExhausted ? t('prop.alt.none') : t('prop.alt.view')}</button></div>}
 
     {selected && selectedBase && <>
       <ProposalDetails proposal={selected} event={event} baseline={baseline} assignmentMap={assignmentMap} goalMap={goalMap} compactLocal={singleLocalProposal} tutorialMode={tutorialMode} onRevise={revision => {
@@ -272,22 +274,23 @@ export function ProposalDialog({
 }
 
 function LocalOperationResult({ proposal, actionLabel }: { proposal: SchedulingProposal; actionLabel: string }) {
+  const t = useT()
   const removedAssignments = proposal.structuralChanges.filter(change => change.entityType === 'assignment' && change.changeType === 'removed').length
   const directCount = removedAssignments || proposal.metrics.newTaskCount || proposal.structuralChanges.length
-  const directLabel = removedAssignments ? '移除任务' : proposal.metrics.newTaskCount ? '新增任务' : '直接变化'
+  const directLabel = removedAssignments ? t('prop.local.removeTask') : proposal.metrics.newTaskCount ? t('prop.local.addTask') : t('prop.local.direct')
   const directSection = proposal.structuralChanges.length ? 'structural' : proposal.metrics.newTaskCount ? 'new' : 'calculation'
   const newOrWorsened = proposal.issueDelta?.newOrWorsenedCount ?? proposal.metrics.issueCount
   const existing = proposal.issueDelta?.preExistingCount ?? 0
 
   return <section className="proposal-local-result">
-    <header><div><span>本次结果</span><strong>{actionLabel}</strong></div><em>{proposal.infeasible ? '需要先处理问题' : '可以直接保存'}</em></header>
+    <header><div><span>{t('prop.local.result')}</span><strong>{actionLabel}</strong></div><em>{proposal.infeasible ? t('prop.local.needFix') : t('prop.local.canSave')}</em></header>
     <div className="proposal-local-result-grid">
       <button type="button" disabled={!directCount} onClick={() => openSection(proposal.id, directSection)}><strong>{directCount}</strong><span>{directLabel}</span></button>
-      <button type="button" disabled={!proposal.movements.length} onClick={() => openSection(proposal.id, 'moves')}><strong>{proposal.movements.length}</strong><span>移动其他任务</span></button>
-      <button type="button" disabled={!proposal.metrics.affectedDateCount} onClick={() => openSection(proposal.id, 'dates')}><strong>{proposal.metrics.affectedDateCount}</strong><span>影响其他日期</span></button>
-      <button type="button" disabled={!newOrWorsened} className={newOrWorsened ? 'danger' : 'success'} onClick={() => openSection(proposal.id, 'issues')}><strong>{newOrWorsened}</strong><span>新增或恶化问题</span></button>
+      <button type="button" disabled={!proposal.movements.length} onClick={() => openSection(proposal.id, 'moves')}><strong>{proposal.movements.length}</strong><span>{t('prop.local.movedOthers')}</span></button>
+      <button type="button" disabled={!proposal.metrics.affectedDateCount} onClick={() => openSection(proposal.id, 'dates')}><strong>{proposal.metrics.affectedDateCount}</strong><span>{t('prop.local.affectedDates')}</span></button>
+      <button type="button" disabled={!newOrWorsened} className={newOrWorsened ? 'danger' : 'success'} onClick={() => openSection(proposal.id, 'issues')}><strong>{newOrWorsened}</strong><span>{t('prop.local.newOrWorse')}</span></button>
     </div>
-    {proposal.issueDelta && <p>计划原有 {existing} 个问题{proposal.issueDelta.resolvedPreExistingCount ? `，本次解决 ${proposal.issueDelta.resolvedPreExistingCount} 个` : ''}{proposal.issueDelta.improvedPreExistingCount ? `，另有 ${proposal.issueDelta.improvedPreExistingCount} 个得到缓解` : ''}；其余不影响本次保存。</p>}
+    {proposal.issueDelta && <p>{t('prop.local.summary', { existing })}{proposal.issueDelta.resolvedPreExistingCount ? t('prop.local.summaryResolved', { n: proposal.issueDelta.resolvedPreExistingCount }) : ''}{proposal.issueDelta.improvedPreExistingCount ? t('prop.local.summaryImproved', { n: proposal.issueDelta.improvedPreExistingCount }) : ''}{t('prop.local.summaryEnd')}</p>}
   </section>
 }
 
@@ -299,6 +302,7 @@ function ConflictDecisionPanel({ proposal, assignmentMap, issueDecisions, except
   onIssueDecision: (issueId: string, action: ConflictResolutionAction) => void
   onExceptionDecision: (id: string, action: 'accept-once' | 'system-find-another-date') => void
 }) {
+  const t = useT()
   const issues = proposal.infeasible ? proposal.issues.filter(isBlockingDecisionIssue) : []
   const unscheduledNotes = proposal.infeasible ? proposal.issues.filter(issue => !isBlockingDecisionIssue(issue)) : []
   const exceptionEntries = proposal.exceptions.map((item, index) => ({ id: exceptionId(item, index), item }))
@@ -317,30 +321,30 @@ function ConflictDecisionPanel({ proposal, assignmentMap, issueDecisions, except
     const label = categoryLabel(conflictProfile(issue).category)
     categoryCounts.set(label, (categoryCounts.get(label) ?? 0) + 1)
   }
-  if (exceptionEntries.length) categoryCounts.set('方案需要的一次性例外', exceptionEntries.length)
+  if (exceptionEntries.length) categoryCounts.set(t('prop.cd.oneTimeException'), exceptionEntries.length)
   const unresolved = issues.filter(issue => !issueDecisions[issue.id]).length + exceptionEntries.filter(entry => !exceptionDecisions[entry.id]).length
 
   return <section id="proposal-conflict-decisions" className="conflict-decision-panel">
     <div className="conflict-decision-heading">
-      <div><span>需要你决定</span><h3>{unresolved ? `还有 ${unresolved} 个问题未处理` : '所有问题均已作出选择'}</h3><p>每项选择只影响对应任务或规则。已完成的真实记录已自动排除，只列出仍可调整的任务。不同问题只显示适用方式，并按“处理任务、修改条件、撤销调整”分层；完成后会重新计算并再次预览。</p>
-        {unscheduledNotes.length > 0 && <p className="conflict-unscheduled-note">另有 {unscheduledNotes.length} 项“未安排”提示不阻塞应用：没有找到合法日期的任务会在应用后自动保留为未安排，无需逐项决定；可稍后在“任务 → 待处理”中继续调整。</p>}
+      <div><span>{t('prop.cd.needYou')}</span><h3>{unresolved ? t('prop.cd.remaining', { n: unresolved }) : t('prop.cd.allDecided')}</h3><p>{t('prop.cd.intro')}</p>
+        {unscheduledNotes.length > 0 && <p className="conflict-unscheduled-note">{t('prop.cd.unscheduledNote', { n: unscheduledNotes.length })}</p>}
       </div>
       <div className="conflict-category-chips">{[...categoryCounts].map(([label, count]) => <span key={label}>{label} {count}</span>)}</div>
     </div>
     {autoResolvable && <div className="conflict-auto-resolve">
-      <button type="button" className="secondary-button" onClick={autoResolveAll}>一次豁免全部可豁免项</button>
-      <span>自动接受可豁免的一次性例外（容量/长任务/数量上限等）；已在研读的绝对保护项（已完成、锁定、计时、过去冻结）仍需手动处理。</span>
+      <button type="button" className="secondary-button" onClick={autoResolveAll}>{t('prop.cd.waiveAll')}</button>
+      <span>{t('prop.cd.waiveAllDesc')}</span>
     </div>}
 
     {issues.map(issue => {
       const profile = conflictProfile(issue)
       const selected = issueDecisions[issue.id]
       return <article className={`conflict-decision-card conflict-${profile.category}`} key={issue.id}>
-        <div className="conflict-decision-card-head"><div><span>{profile.label}</span><strong>{issue.title}</strong></div>{selected && <em>已选择：{resolutionLabel(selected, issue)}</em>}</div>
+        <div className="conflict-decision-card-head"><div><span>{profile.label}</span><strong>{issue.title}</strong></div>{selected && <em>{t('prop.cd.selected', { label: resolutionLabel(selected, issue) })}</em>}</div>
         <p>{issue.detail}</p>
-        {(issue.currentValue != null || issue.allowedValue != null) && <div className="conflict-values"><span><small>调整后</small>{issue.currentValue ?? '—'}</span><span><small>当前允许</small>{issue.allowedValue ?? '—'}</span></div>}
-        {issue.assignmentIds.length > 0 && <details><summary>涉及任务（{issue.assignmentIds.length}）</summary><ul>{issue.assignmentIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></details>}
-        <div className="conflict-impact"><span>{profile.description}</span><small>后果：{issue.consequence}</small></div>
+        {(issue.currentValue != null || issue.allowedValue != null) && <div className="conflict-values"><span><small>{t('prop.cd.afterAdjust')}</small>{issue.currentValue ?? '—'}</span><span><small>{t('prop.cd.currentlyAllowed')}</small>{issue.allowedValue ?? '—'}</span></div>}
+        {issue.assignmentIds.length > 0 && <details><summary>{t('prop.cd.involvedTasks', { n: issue.assignmentIds.length })}</summary><ul>{issue.assignmentIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></details>}
+        <div className="conflict-impact"><span>{profile.description}</span><small>{t('prop.cd.consequence', { text: issue.consequence })}</small></div>
         <ConflictResolutionChoices
           issue={issue}
           actions={profile.allowedResolutions}
@@ -353,10 +357,10 @@ function ConflictDecisionPanel({ proposal, assignmentMap, issueDecisions, except
     {exceptionEntries.map(({ id, item }) => {
       const selected = exceptionDecisions[id]
       return <article className="conflict-decision-card conflict-waivable-rule" key={id}>
-        <div className="conflict-decision-card-head"><div><span>方案需要的一次性例外</span><strong>{fmtDate(item.date)} · {item.label}</strong></div>{selected && <em>已选择：{selected === 'accept-once' ? '接受本次例外' : '不接受例外'}</em>}</div>
-        <p>该例外仅授权预览中涉及的任务，本次结束后不会修改永久容量、每日上限或日期保护。</p>
-        {item.affectedAssignmentIds?.length ? <details><summary>例外涉及任务（{item.affectedAssignmentIds.length}）</summary><ul>{item.affectedAssignmentIds.map(idValue => <li key={idValue}>{assignmentMap.get(idValue)?.title ?? idValue}</li>)}</ul></details> : null}
-        <div className="conflict-resolution-grid two"><button type="button" className={selected === 'accept-once' ? 'selected' : ''} onClick={() => onExceptionDecision(id, 'accept-once')}><strong>接受本次例外</strong><small>保留该候选的最小范围授权。</small></button><button type="button" className={selected === 'system-find-another-date' ? 'selected' : ''} onClick={() => onExceptionDecision(id, 'system-find-another-date')}><strong>不接受，让系统重算</strong><small>坚持原规则，重新寻找其他安排。</small></button></div>
+        <div className="conflict-decision-card-head"><div><span>{t('prop.cd.oneTimeException')}</span><strong>{fmtDate(item.date)} · {item.label}</strong></div>{selected && <em>{t('prop.cd.selected', { label: selected === 'accept-once' ? t('prop.cd.acceptOnce') : t('prop.cd.rejectException') })}</em>}</div>
+        <p>{t('prop.cd.exceptionScope')}</p>
+        {item.affectedAssignmentIds?.length ? <details><summary>{t('prop.cd.exceptionTasks', { n: item.affectedAssignmentIds.length })}</summary><ul>{item.affectedAssignmentIds.map(idValue => <li key={idValue}>{assignmentMap.get(idValue)?.title ?? idValue}</li>)}</ul></details> : null}
+        <div className="conflict-resolution-grid two"><button type="button" className={selected === 'accept-once' ? 'selected' : ''} onClick={() => onExceptionDecision(id, 'accept-once')}><strong>{t('prop.cd.acceptOnce')}</strong><small>{t('prop.cd.acceptOnceDesc')}</small></button><button type="button" className={selected === 'system-find-another-date' ? 'selected' : ''} onClick={() => onExceptionDecision(id, 'system-find-another-date')}><strong>{t('prop.cd.rejectRecalc')}</strong><small>{t('prop.cd.rejectRecalcDesc')}</small></button></div>
       </article>
     })}
   </section>
@@ -368,6 +372,7 @@ function ConflictResolutionChoices({ issue, actions, selected, onSelect }: {
   selected?: ConflictResolutionAction
   onSelect: (action: ConflictResolutionAction) => void
 }) {
+  const t = useT()
   const direct = actions.filter(action => ['accept-once', 'system-find-another-date', 'keep-original', 'leave-unscheduled', 'unlock-and-move'].includes(action))
   const condition = actions.filter(action => action === 'change-goal' || action === 'change-capacity')
   const withdraw = actions.filter(action => action === 'cancel-change')
@@ -376,34 +381,34 @@ function ConflictResolutionChoices({ issue, actions, selected, onSelect }: {
     className={selected === action ? 'selected' : ''}
     key={action}
     onClick={() => onSelect(action)}
-  ><strong>{resolutionLabel(action, issue)}</strong><small>{resolutionDescription(action, issue)}</small></button>)}</div>
+  ><strong>{resolutionLabel(action, issue)}</strong><small>{resolutionDescription(action, t, issue)}</small></button>)}</div>
 
   return <div className="conflict-resolution-sections">
-    {direct.length > 0 && <section><header><strong>{isTodayIncomingIssue(issue) ? '怎么处理这些任务' : '处理当前任务'}</strong><span>{isTodayIncomingIssue(issue) ? '四选一；其他任务和永久设置不受影响' : '选择这些未完成任务接下来怎么办'}</span></header>{render(direct)}</section>}
-    {condition.length > 0 && <section><header><strong>修改产生冲突的条件</strong><span>{isTodayIncomingIssue(issue) ? '增加今天可用时间后，返回这里重新生成预览' : '离开预览修改后，系统会重新检查'}</span></header>{render(condition)}</section>}
-    {withdraw.length > 0 && <section className="conflict-resolution-withdraw"><header><strong>不继续这部分调整</strong><span>只撤销与本问题相关的变化</span></header>{render(withdraw)}</section>}
+    {direct.length > 0 && <section><header><strong>{isTodayIncomingIssue(issue) ? t('prop.rc.todayTitle') : t('prop.rc.directTitle')}</strong><span>{isTodayIncomingIssue(issue) ? t('prop.rc.todayDesc') : t('prop.rc.directDesc')}</span></header>{render(direct)}</section>}
+    {condition.length > 0 && <section><header><strong>{t('prop.rc.conditionTitle')}</strong><span>{isTodayIncomingIssue(issue) ? t('prop.rc.conditionToday') : t('prop.rc.conditionOther')}</span></header>{render(condition)}</section>}
+    {withdraw.length > 0 && <section className="conflict-resolution-withdraw"><header><strong>{t('prop.rc.withdrawTitle')}</strong><span>{t('prop.rc.withdrawDesc')}</span></header>{render(withdraw)}</section>}
   </div>
 }
 
-function resolutionDescription(action: ConflictResolutionAction, issue?: ProposalIssue) {
+function resolutionDescription(action: ConflictResolutionAction, t: ReturnType<typeof useT>, issue?: ProposalIssue) {
   if (isTodayIncomingIssue(issue)) {
     const todayDescriptions: Partial<Record<ConflictResolutionAction, string>> = {
-      'accept-once': '只放行当前列出的任务进入今天；不修改“今天默认不接收未来任务”的永久规则。',
-      'system-find-another-date': '不使用今天，系统从今天之后寻找其他合法日期。',
-      'keep-original': '取消这次移动，任务回到发起调整前的日期。',
-      'change-capacity': '先去设置中增加今天可用时间，回来后重新生成预览。',
+      'accept-once': t('prop.rd.today.acceptOnce'),
+      'system-find-another-date': t('prop.rd.today.findAnother'),
+      'keep-original': t('prop.rd.today.keepOriginal'),
+      'change-capacity': t('prop.rd.today.changeCapacity'),
     }
     return todayDescriptions[action] ?? action
   }
   const descriptions: Record<ConflictResolutionAction, string> = {
-    'accept-once': '只对本次、对应日期、规则和涉及任务授权，不修改永久设置。',
-    'system-find-another-date': '坚持原规则，只释放这里列出的未完成任务重新找日期。',
-    'keep-original': '撤销本方案对这些任务日期和保护状态的修改。',
-    'leave-unscheduled': '任务继续保留，但暂时不指定日期，也不会被强塞。',
-    'unlock-and-move': '把解除锁定作为明确改动，再按新条件重新计算。',
-    'change-goal': '回到目标页修改日期或完成条件，之后重新生成预览。',
-    'change-capacity': '修改相关日期的可用时间，之后重新生成预览。',
-    'cancel-change': '放弃本次变化中仅与这些任务有关的部分，不影响其他合法改动。',
+    'accept-once': t('prop.rd.acceptOnce'),
+    'system-find-another-date': t('prop.rd.findAnother'),
+    'keep-original': t('prop.rd.keepOriginal'),
+    'leave-unscheduled': t('prop.rd.leaveUnscheduled'),
+    'unlock-and-move': t('prop.rd.unlockAndMove'),
+    'change-goal': t('prop.rd.changeGoal'),
+    'change-capacity': t('prop.rd.changeCapacity'),
+    'cancel-change': t('prop.rd.cancelChange'),
   }
   return descriptions[action]
 }
@@ -416,6 +421,7 @@ function openSection(proposalId: string, section: string) {
 }
 
 function ProposalDetails({ proposal, event, baseline, assignmentMap, goalMap, compactLocal = false, tutorialMode = false, onRevise }: { proposal: SchedulingProposal; event: PlanChangeEvent; baseline: AppState; assignmentMap: Map<string, Assignment>; goalMap: Map<string, Goal>; compactLocal?: boolean; tutorialMode?: boolean; onRevise: (revision: ProposalMovementRevision) => void }) {
+  const t = useT()
   const newTaskIds = event.type === 'new-task-insertion' || event.type === 'task-group-size-increase' ? event.affectedAssignmentIds : []
   const manualMoves = proposal.movements.filter(item => item.manualIntentImpact === 'moved-manual')
   const explicitLocalOperation = event.metadata?.explicitLocalOperation === true || event.metadata?.operationScope === 'requested-change-only'
@@ -423,35 +429,35 @@ function ProposalDetails({ proposal, event, baseline, assignmentMap, goalMap, co
   const lockedPreserved = tutorialMode ? baseline.assignments.filter(before => before.locked && proposal.stateAfter.assignments.some(after => after.id === before.id && after.locked && after.scheduledDate === before.scheduledDate)).length : 0
   const goalRiskImproved = tutorialMode && proposal.goalImpacts.some(item => (item.latestRiskBefore && !item.latestRiskAfter) || (item.desiredRiskBefore && !item.desiredRiskAfter) || Boolean(item.beforeExpectedCompletion && item.afterExpectedCompletion && item.afterExpectedCompletion < item.beforeExpectedCompletion))
   return <div className={`proposal-details ${compactLocal ? 'proposal-details-compact-local' : ''}`}>
-    {tutorialMode && event.metadata?.requestedOutcome === 'fix-current' && <section className="tutorial-proposal-protection"><div><strong>✓ 已完成任务保持不变</strong><span>{completedPreserved} 项历史完成记录未被改写</span></div><div><strong>🔒 已锁定任务保持不变</strong><span>{lockedPreserved} 项锁定安排继续受保护</span></div><div className={goalRiskImproved ? 'success' : 'warning'}><strong>{goalRiskImproved ? '⚠ 目标延期风险得到缓解' : '⚠ 目标风险仍需关注'}</strong><span>{goalRiskImproved ? '新的安排让目标预计结果变得更安全。' : '这个方案没有把目标风险隐藏掉，请继续检查目标影响。'}</span></div></section>}
-    {!compactLocal && explicitLocalOperation && proposal.issueDelta && <section className="proposal-scope-summary"><div><span>本次作用范围</span><strong>只执行用户操作</strong><p>其他任务移动 {proposal.movements.length} 项；计划原有问题不会阻止本次操作，也不会自动触发全面重排。</p></div><div className="proposal-scope-stats"><span><small>原有硬问题</small><strong>{proposal.issueDelta.preExistingCount}</strong></span><span><small>本次已解决</small><strong>{proposal.issueDelta.resolvedPreExistingCount}</strong></span><span><small>本次有所缓解</small><strong>{proposal.issueDelta.improvedPreExistingCount}</strong></span><span className={proposal.issueDelta.newOrWorsenedCount ? 'danger' : 'success'}><small>新增或恶化</small><strong>{proposal.issueDelta.newOrWorsenedCount}</strong></span></div></section>}
-    {proposal.infeasible && <div className="proposal-warning"><strong>这个方案需要先处理问题</strong><p>{proposal.infeasibleReason}</p><small>你可以逐项接受可豁免规则、拒绝并要求换日，或恢复原安排；系统不会只把按钮禁用。</small></div>}
-    {!compactLocal && <section className="proposal-human-summary"><span>方案结果</span><h3>{proposal.infeasible ? `发现 ${proposal.issues.length} 个问题` : proposal.goalImpacts.some(item => item.latestRiskAfter) ? '可执行，但仍有最晚期限风险' : '已通过完整执行检查'}</h3><p>{proposal.metrics.manualTaskMoveCount ? '该方案会触及手动安排，请重点检查对应明细。' : '手动安排保持受保护。'} 默认只展示结论；点击数字可展开完整任务、日期、目标和计算依据。</p></section>}
+    {tutorialMode && event.metadata?.requestedOutcome === 'fix-current' && <section className="tutorial-proposal-protection"><div><strong>{t('prop.pd.donePreserved')}</strong><span>{t('prop.pd.donePreservedDesc', { n: completedPreserved })}</span></div><div><strong>{t('prop.pd.lockedPreserved')}</strong><span>{t('prop.pd.lockedPreservedDesc', { n: lockedPreserved })}</span></div><div className={goalRiskImproved ? 'success' : 'warning'}><strong>{goalRiskImproved ? t('prop.pd.riskEased') : t('prop.pd.riskRemains')}</strong><span>{goalRiskImproved ? t('prop.pd.riskEasedDesc') : t('prop.pd.riskRemainsDesc')}</span></div></section>}
+    {!compactLocal && explicitLocalOperation && proposal.issueDelta && <section className="proposal-scope-summary"><div><span>{t('prop.pd.scope')}</span><strong>{t('prop.pd.scopeOnlyUser')}</strong><p>{t('prop.pd.scopeDesc', { n: proposal.movements.length })}</p></div><div className="proposal-scope-stats"><span><small>{t('prop.pd.statExisting')}</small><strong>{proposal.issueDelta.preExistingCount}</strong></span><span><small>{t('prop.pd.statResolved')}</small><strong>{proposal.issueDelta.resolvedPreExistingCount}</strong></span><span><small>{t('prop.pd.statImproved')}</small><strong>{proposal.issueDelta.improvedPreExistingCount}</strong></span><span className={proposal.issueDelta.newOrWorsenedCount ? 'danger' : 'success'}><small>{t('prop.pd.statNewOrWorse')}</small><strong>{proposal.issueDelta.newOrWorsenedCount}</strong></span></div></section>}
+    {proposal.infeasible && <div className="proposal-warning"><strong>{t('prop.pd.needFix')}</strong><p>{proposal.infeasibleReason}</p><small>{t('prop.pd.needFixDesc')}</small></div>}
+    {!compactLocal && <section className="proposal-human-summary"><span>{t('prop.pd.result')}</span><h3>{proposal.infeasible ? t('prop.pd.found', { n: proposal.issues.length }) : proposal.goalImpacts.some(item => item.latestRiskAfter) ? t('prop.pd.executableRisk') : t('prop.pd.passed')}</h3><p>{proposal.metrics.manualTaskMoveCount ? t('prop.pd.touchesManual') : t('prop.pd.manualProtected')} {t('prop.pd.expandHint')}</p></section>}
     {!compactLocal && <div className="proposal-summary-grid">
-      <ExpandableMetric label="检测到的问题" value={proposal.metrics.issueCount} tone={proposal.metrics.issueCount ? 'danger' : 'success'} onClick={() => openSection(proposal.id, 'issues')}/>
-      <ExpandableMetric label="移动任务" value={proposal.metrics.movedTaskCount} onClick={() => openSection(proposal.id, 'moves')}/>
-      <ExpandableMetric label="受影响日期" value={proposal.metrics.affectedDateCount} onClick={() => openSection(proposal.id, 'dates')}/>
-      <ExpandableMetric label="新增任务" value={proposal.metrics.newTaskCount} onClick={() => openSection(proposal.id, 'new')}/>
-      <ExpandableMetric label="手动安排受影响" value={proposal.metrics.manualTaskMoveCount} tone={proposal.metrics.manualTaskMoveCount ? 'warning' : 'success'} onClick={() => openSection(proposal.id, 'manual')}/>
-      <ExpandableMetric label="字段与结构变化" value={proposal.structuralChanges.length} onClick={() => openSection(proposal.id, 'structural')}/>
-      <ExpandableMetric label="一次性例外" value={proposal.exceptions.length} tone={proposal.exceptions.length ? 'warning' : undefined} onClick={() => openSection(proposal.id, 'exceptions')}/>
-      <ExpandableMetric label="计划稳定性" value={`${proposal.metrics.stabilityScore}%`} onClick={() => openSection(proposal.id, 'calculation')}/>
+      <ExpandableMetric label={t('prop.pd.mIssues')} value={proposal.metrics.issueCount} tone={proposal.metrics.issueCount ? 'danger' : 'success'} onClick={() => openSection(proposal.id, 'issues')}/>
+      <ExpandableMetric label={t('prop.pd.mMoved')} value={proposal.metrics.movedTaskCount} onClick={() => openSection(proposal.id, 'moves')}/>
+      <ExpandableMetric label={t('prop.pd.mDates')} value={proposal.metrics.affectedDateCount} onClick={() => openSection(proposal.id, 'dates')}/>
+      <ExpandableMetric label={t('prop.pd.mNew')} value={proposal.metrics.newTaskCount} onClick={() => openSection(proposal.id, 'new')}/>
+      <ExpandableMetric label={t('prop.pd.mManual')} value={proposal.metrics.manualTaskMoveCount} tone={proposal.metrics.manualTaskMoveCount ? 'warning' : 'success'} onClick={() => openSection(proposal.id, 'manual')}/>
+      <ExpandableMetric label={t('prop.pd.mStructural')} value={proposal.structuralChanges.length} onClick={() => openSection(proposal.id, 'structural')}/>
+      <ExpandableMetric label={t('prop.pd.mExceptions')} value={proposal.exceptions.length} tone={proposal.exceptions.length ? 'warning' : undefined} onClick={() => openSection(proposal.id, 'exceptions')}/>
+      <ExpandableMetric label={t('prop.pd.mStability')} value={`${proposal.metrics.stabilityScore}%`} onClick={() => openSection(proposal.id, 'calculation')}/>
     </div>}
 
-    {(!compactLocal || proposal.issues.length > 0) && <details id={`proposal-${proposal.id}-issues`}><summary>问题明细（{proposal.issues.length}）</summary><div className="proposal-cards">{proposal.issues.map(issue => <article className="proposal-card proposal-issue-card" key={issue.id}><div className="proposal-issue-heading"><strong>{issue.title}</strong><span>{conflictProfile(issue).label}</span></div><p>{issue.detail}</p>{issue.assignmentIds.length > 0 && <details><summary>涉及任务（{issue.assignmentIds.length}）</summary><ul>{issue.assignmentIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></details>}{(issue.currentValue != null || issue.allowedValue != null) && <div className="before-after"><span><small>调整后</small>{issue.currentValue ?? '—'}</span><span><small>允许</small>{issue.allowedValue ?? '—'}</span></div>}<small>后果：{issue.consequence}</small><p>建议处理：{issue.resolution}</p></article>)}{proposal.issues.length === 0 && <p className="muted-text">没有发现新的硬冲突。</p>}</div></details>}
+    {(!compactLocal || proposal.issues.length > 0) && <details id={`proposal-${proposal.id}-issues`}><summary>{t('prop.pd.issuesDetail', { n: proposal.issues.length })}</summary><div className="proposal-cards">{proposal.issues.map(issue => <article className="proposal-card proposal-issue-card" key={issue.id}><div className="proposal-issue-heading"><strong>{issue.title}</strong><span>{conflictProfile(issue).label}</span></div><p>{issue.detail}</p>{issue.assignmentIds.length > 0 && <details><summary>{t('prop.cd.involvedTasks', { n: issue.assignmentIds.length })}</summary><ul>{issue.assignmentIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></details>}{(issue.currentValue != null || issue.allowedValue != null) && <div className="before-after"><span><small>{t('prop.cd.afterAdjust')}</small>{issue.currentValue ?? '—'}</span><span><small>{t('prop.pd.allowed')}</small>{issue.allowedValue ?? '—'}</span></div>}<small>{t('prop.cd.consequence', { text: issue.consequence })}</small><p>{t('prop.pd.suggested', { text: issue.resolution })}</p></article>)}{proposal.issues.length === 0 && <p className="muted-text">{t('prop.pd.noNewConflicts')}</p>}</div></details>}
 
-    {(!compactLocal || proposal.movements.length > 0) && <details id={`proposal-${proposal.id}-moves`}><summary>任务变化（{proposal.movements.length}）</summary><div className="proposal-cards">
-      {proposal.movements.length === 0 && <p className="muted-text">现有任务日期无需移动。</p>}
+    {(!compactLocal || proposal.movements.length > 0) && <details id={`proposal-${proposal.id}-moves`}><summary>{t('prop.pd.taskChanges', { n: proposal.movements.length })}</summary><div className="proposal-cards">
+      {proposal.movements.length === 0 && <p className="muted-text">{t('prop.pd.noMoves')}</p>}
       {proposal.movements.map(move => {
         const afterTask = proposal.stateAfter.assignments.find(item => item.id === move.assignmentId)
         const baselineTask = baseline.assignments.find(item => item.id === move.assignmentId)
-        return <article key={move.assignmentId} className="proposal-card proposal-movement-card"><strong>{assignmentMap.get(move.assignmentId)?.title ?? move.assignmentId}</strong><div className="before-after"><span><small>之前</small>{move.fromDate ? fmtDate(move.fromDate) : '未安排'} · 当日 {minutesText(move.beforeLoad)}</span><span><small>之后</small>{move.toDate ? fmtDate(move.toDate) : '未安排'} · 当日 {minutesText(move.afterLoad)}</span></div><p>{move.reason}</p><small>{move.goalImpact} · 手动意图：{move.manualIntentImpact === 'preserved' ? '已保护' : move.manualIntentImpact === 'moved-manual' ? '此方案会移动手动安排' : move.manualIntentImpact === 'locked-blocked' ? '被锁定阻止' : '无影响'}</small>
-          {!proposal.infeasible && <div className={`proposal-movement-editor ${tutorialMode ? 'tutorial-disabled-control' : ''}`}><div><strong>逐项微调</strong><small>{tutorialMode ? '教程中完整展示该功能，但本步固定使用推荐结果。' : '修改后会重新验算容量、每日上限、目标和日期保护。'}</small></div><div className="proposal-movement-actions">{baselineTask?.scheduledDate && <button type="button" className="secondary-button" disabled={tutorialMode || move.toDate === baselineTask.scheduledDate} onClick={() => onRevise({ assignmentId: move.assignmentId, date: baselineTask.scheduledDate, lock: false })}>保留原日期</button>}<input aria-label="自定义目标日期" type="date" min={baseline.settings.startDate} max={baseline.settings.endDate} value={move.toDate ?? ''} disabled={tutorialMode} onChange={eventValue => onRevise({ assignmentId: move.assignmentId, date: eventValue.target.value || undefined, lock: Boolean(afterTask?.locked) })}/><label><input type="checkbox" checked={Boolean(afterTask?.locked)} disabled={tutorialMode} onChange={eventValue => onRevise({ assignmentId: move.assignmentId, date: move.toDate, lock: eventValue.target.checked })}/><span>锁定这个结果</span></label></div></div>}
-          {move.rejectedAlternatives.length > 0 && <details><summary>为什么没有安排到其他日期</summary>{move.rejectedAlternatives.map(item => <div className="rejected-date" key={item.date}><strong>{fmtDate(item.date)}</strong><ul>{item.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>)}</details>}</article>
+        return <article key={move.assignmentId} className="proposal-card proposal-movement-card"><strong>{assignmentMap.get(move.assignmentId)?.title ?? move.assignmentId}</strong><div className="before-after"><span><small>{t('prop.pd.before')}</small>{move.fromDate ? fmtDate(move.fromDate) : t('prop.pd.unscheduled')} · {t('prop.pd.dayLoad', { load: minutesText(move.beforeLoad) })}</span><span><small>{t('prop.pd.after')}</small>{move.toDate ? fmtDate(move.toDate) : t('prop.pd.unscheduled')} · {t('prop.pd.dayLoad', { load: minutesText(move.afterLoad) })}</span></div><p>{move.reason}</p><small>{move.goalImpact} · {t('prop.pd.manualIntent', { label: move.manualIntentImpact === 'preserved' ? t('prop.pd.miPreserved') : move.manualIntentImpact === 'moved-manual' ? t('prop.pd.miMoved') : move.manualIntentImpact === 'locked-blocked' ? t('prop.pd.miBlocked') : t('prop.pd.miNone') })}</small>
+          {!proposal.infeasible && <div className={`proposal-movement-editor ${tutorialMode ? 'tutorial-disabled-control' : ''}`}><div><strong>{t('prop.pd.fineTune')}</strong><small>{tutorialMode ? t('prop.pd.fineTuneTutorial') : t('prop.pd.fineTuneDesc')}</small></div><div className="proposal-movement-actions">{baselineTask?.scheduledDate && <button type="button" className="secondary-button" disabled={tutorialMode || move.toDate === baselineTask.scheduledDate} onClick={() => onRevise({ assignmentId: move.assignmentId, date: baselineTask.scheduledDate, lock: false })}>{t('prop.pd.keepOriginalDate')}</button>}<input aria-label={t('prop.pd.customDate')} type="date" min={baseline.settings.startDate} max={baseline.settings.endDate} value={move.toDate ?? ''} disabled={tutorialMode} onChange={eventValue => onRevise({ assignmentId: move.assignmentId, date: eventValue.target.value || undefined, lock: Boolean(afterTask?.locked) })}/><label><input type="checkbox" checked={Boolean(afterTask?.locked)} disabled={tutorialMode} onChange={eventValue => onRevise({ assignmentId: move.assignmentId, date: move.toDate, lock: eventValue.target.checked })}/><span>{t('prop.pd.lockResult')}</span></label></div></div>}
+          {move.rejectedAlternatives.length > 0 && <details><summary>{t('prop.pd.whyNotOther')}</summary>{move.rejectedAlternatives.map(item => <div className="rejected-date" key={item.date}><strong>{fmtDate(item.date)}</strong><ul>{item.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>)}</details>}</article>
       })}
     </div></details>}
 
-    {(!compactLocal || proposal.dateChanges.length > 0) && <details id={`proposal-${proposal.id}-dates`}><summary>日期负载与任务前后（{proposal.dateChanges.length}）</summary><div className="proposal-cards">{proposal.dateChanges.map(change => {
+    {(!compactLocal || proposal.dateChanges.length > 0) && <details id={`proposal-${proposal.id}-dates`}><summary>{t('prop.pd.dateLoad', { n: proposal.dateChanges.length })}</summary><div className="proposal-cards">{proposal.dateChanges.map(change => {
       const delta = change.afterMinutes - change.beforeMinutes
       const capacityDelta = (change.afterCapacity ?? 0) - (change.beforeCapacity ?? 0)
       const capacityChanged = change.beforeCapacity != null && change.afterCapacity != null && capacityDelta !== 0
@@ -459,19 +465,20 @@ function ProposalDetails({ proposal, event, baseline, assignmentMap, goalMap, co
       const afterTaskIds = new Set(change.afterTaskIds)
       const removedCount = change.beforeTaskIds.filter(id => !afterTaskIds.has(id)).length
       const addedCount = change.afterTaskIds.filter(id => !beforeTaskIds.has(id)).length
-      return <article className="proposal-card proposal-date-card" key={change.date}><strong>{fmtDate(change.date)}</strong><div className="before-after"><span><small>之前</small>负载 {minutesText(change.beforeMinutes)} · {change.beforeTaskIds.length}项{change.beforeCapacity != null && <em>容量 {minutesText(change.beforeCapacity)}</em>}</span><span><small>之后</small>负载 {minutesText(change.afterMinutes)} · {change.afterTaskIds.length}项{change.afterCapacity != null && <em>容量 {minutesText(change.afterCapacity)}</em>}</span></div><p className={`load-delta ${delta > 0 ? 'load-delta-up' : delta < 0 ? 'load-delta-down' : 'load-delta-flat'}`}>{delta > 0 ? '↑ 负载增加' : delta < 0 ? '↓ 负载减少' : '— 负载不变'} {minutesText(Math.abs(delta))}</p>{capacityChanged && <p className={`capacity-delta ${capacityDelta > 0 ? 'capacity-delta-up' : 'capacity-delta-down'}`}>{capacityDelta > 0 ? '↑ 可用容量增加' : '↓ 可用容量减少'} {minutesText(Math.abs(capacityDelta))}</p>}{(removedCount > 0 || addedCount > 0) && <div className="proposal-change-legend"><span className="proposal-change-removed">红色划线：移出当天 {removedCount} 项</span><span className="proposal-change-added">绿色：移入当天 {addedCount} 项</span></div>}<div className="proposal-date-task-lists"><div><small>之前的任务</small><ul>{change.beforeTaskIds.map(id => <li className={!afterTaskIds.has(id) ? 'proposal-task-removed' : ''} key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></div><div><small>之后的任务</small><ul>{change.afterTaskIds.map(id => <li className={!beforeTaskIds.has(id) ? 'proposal-task-added' : ''} key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></div></div></article>
-    })}{proposal.dateChanges.length === 0 && <p className="muted-text">日期负载和可用容量没有变化。</p>}</div></details>}
+      return <article className="proposal-card proposal-date-card" key={change.date}><strong>{fmtDate(change.date)}</strong><div className="before-after"><span><small>{t('prop.pd.before')}</small>{t('prop.pd.load', { load: minutesText(change.beforeMinutes) })} · {t('prop.pd.items', { n: change.beforeTaskIds.length })}{change.beforeCapacity != null && <em>{t('prop.pd.capacity', { value: minutesText(change.beforeCapacity) })}</em>}</span><span><small>{t('prop.pd.after')}</small>{t('prop.pd.load', { load: minutesText(change.afterMinutes) })} · {t('prop.pd.items', { n: change.afterTaskIds.length })}{change.afterCapacity != null && <em>{t('prop.pd.capacity', { value: minutesText(change.afterCapacity) })}</em>}</span></div><p className={`load-delta ${delta > 0 ? 'load-delta-up' : delta < 0 ? 'load-delta-down' : 'load-delta-flat'}`}>{delta > 0 ? t('prop.pd.loadUp') : delta < 0 ? t('prop.pd.loadDown') : t('prop.pd.loadFlat')} {minutesText(Math.abs(delta))}</p>{capacityChanged && <p className={`capacity-delta ${capacityDelta > 0 ? 'capacity-delta-up' : 'capacity-delta-down'}`}>{capacityDelta > 0 ? t('prop.pd.capUp') : t('prop.pd.capDown')} {minutesText(Math.abs(capacityDelta))}</p>}{(removedCount > 0 || addedCount > 0) && <div className="proposal-change-legend"><span className="proposal-change-removed">{t('prop.pd.legendRemoved', { n: removedCount })}</span><span className="proposal-change-added">{t('prop.pd.legendAdded', { n: addedCount })}</span></div>}<div className="proposal-date-task-lists"><div><small>{t('prop.pd.tasksBefore')}</small><ul>{change.beforeTaskIds.map(id => <li className={!afterTaskIds.has(id) ? 'proposal-task-removed' : ''} key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></div><div><small>{t('prop.pd.tasksAfter')}</small><ul>{change.afterTaskIds.map(id => <li className={!beforeTaskIds.has(id) ? 'proposal-task-added' : ''} key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}</ul></div></div></article>
+    })}{proposal.dateChanges.length === 0 && <p className="muted-text">{t('prop.pd.noLoadChange')}</p>}</div></details>}
 
-    {(!compactLocal || proposal.goalImpacts.length > 0) && <details><summary>目标影响（{proposal.goalImpacts.length}）</summary><div className="proposal-cards">{proposal.goalImpacts.map(impact => <article className="proposal-card" key={impact.goalId}><strong>{goalMap.get(impact.goalId)?.title ?? impact.goalId}</strong><div className="before-after"><span><small>之前</small>{Math.round(impact.beforeProgress * 100)}% · {impact.beforeExpectedCompletion ?? '无法预计'}</span><span><small>之后</small>{Math.round(impact.afterProgress * 100)}% · {impact.afterExpectedCompletion ?? '无法预计'}</span></div><p>{impact.summary}</p><small>期望日期风险：{impact.desiredRiskAfter ? '有' : '无'} · 最晚日期风险：{impact.latestRiskAfter ? '有' : '无'}</small></article>)}{proposal.goalImpacts.length === 0 && <p className="muted-text">目标进度和风险没有变化。</p>}</div></details>}
+    {(!compactLocal || proposal.goalImpacts.length > 0) && <details><summary>{t('prop.pd.goalImpact', { n: proposal.goalImpacts.length })}</summary><div className="proposal-cards">{proposal.goalImpacts.map(impact => <article className="proposal-card" key={impact.goalId}><strong>{goalMap.get(impact.goalId)?.title ?? impact.goalId}</strong><div className="before-after"><span><small>{t('prop.pd.before')}</small>{Math.round(impact.beforeProgress * 100)}% · {impact.beforeExpectedCompletion ?? t('prop.pd.cannotEstimate')}</span><span><small>{t('prop.pd.after')}</small>{Math.round(impact.afterProgress * 100)}% · {impact.afterExpectedCompletion ?? t('prop.pd.cannotEstimate')}</span></div><p>{impact.summary}</p><small>{t('prop.pd.desiredRisk', { v: impact.desiredRiskAfter ? t('prop.pd.yes') : t('prop.pd.no') })} · {t('prop.pd.latestRisk', { v: impact.latestRiskAfter ? t('prop.pd.yes') : t('prop.pd.no') })}</small></article>)}{proposal.goalImpacts.length === 0 && <p className="muted-text">{t('prop.pd.noGoalChange')}</p>}</div></details>}
 
-    {(!compactLocal || newTaskIds.length > 0) && <details id={`proposal-${proposal.id}-new`}><summary>本次新增或纳入的任务（{newTaskIds.length}）</summary><ul className="proposal-name-list">{newTaskIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}{newTaskIds.length === 0 && <li>本次不是新增任务事件。</li>}</ul></details>}
-    {(!compactLocal || manualMoves.length > 0) && <details id={`proposal-${proposal.id}-manual`}><summary>手动安排影响（{manualMoves.length}）</summary>{manualMoves.length ? <ul className="proposal-name-list">{manualMoves.map(item => <li key={item.assignmentId}>{assignmentMap.get(item.assignmentId)?.title ?? item.assignmentId}：{item.fromDate ?? '未安排'} → {item.toDate ?? '未安排'}</li>)}</ul> : <p className="muted-text">没有移动任何手动安排任务。</p>}</details>}
-    {(!compactLocal || proposal.structuralChanges.length > 0) && <details id={`proposal-${proposal.id}-structural`}><summary>字段与结构前后变化（{proposal.structuralChanges.length}）</summary><div className="proposal-cards">{proposal.structuralChanges.length ? proposal.structuralChanges.map(change => <article className="proposal-card structural-change-card" key={`${change.entityType}-${change.entityId}`}><div className="structural-change-head"><strong>{change.title}</strong><span>{change.changeType === 'added' ? '新增' : change.changeType === 'removed' ? '移除' : '修改'}</span></div>{change.fields.map(field => <div className="before-after structural-field" key={field.label}><span><small>{field.label} · 之前</small>{field.before ?? '—'}</span><span><small>{field.label} · 之后</small>{field.after ?? '—'}</span></div>)}</article>) : <p className="muted-text">除日期安排外，没有其他字段或结构变化。</p>}</div></details>}
-    {(!compactLocal || proposal.exceptions.length > 0) && <details id={`proposal-${proposal.id}-exceptions`}><summary>一次性例外（{proposal.exceptions.length}）</summary>{proposal.exceptions.length ? proposal.exceptions.map((item, index) => <div className="exception-row" key={`${index}-${item.date}-${item.rawKey ?? item.key}`}><strong>{fmtDate(item.date)}</strong><span>{item.label}</span><em>只影响本次方案，不修改永久默认值{item.affectedAssignmentIds?.length ? ` · 涉及 ${item.affectedAssignmentIds.length} 项任务` : ''}</em></div>) : <p className="muted-text">没有使用任何一次性例外。</p>}</details>}
-    <details id={`proposal-${proposal.id}-calculation`}><summary>计算依据与稳定性（{proposal.metrics.stabilityScore}%）</summary><p>{proposal.description}</p><p>平均负载：{minutesText(proposal.metrics.beforeAverageLoad)} → {minutesText(proposal.metrics.afterAverageLoad)}；最高负载：{minutesText(proposal.metrics.beforeMaxLoad)} → {minutesText(proposal.metrics.afterMaxLoad)}；原日期保留率 {Math.round(proposal.metrics.originalDateRetention * 100)}%。稳定性同时考虑移动数量、移动距离、手动意图、受影响日期、负载变化、目标影响和日期保护。</p></details>
+    {(!compactLocal || newTaskIds.length > 0) && <details id={`proposal-${proposal.id}-new`}><summary>{t('prop.pd.newTasks', { n: newTaskIds.length })}</summary><ul className="proposal-name-list">{newTaskIds.map(id => <li key={id}>{assignmentMap.get(id)?.title ?? id}</li>)}{newTaskIds.length === 0 && <li>{t('prop.pd.notNewEvent')}</li>}</ul></details>}
+    {(!compactLocal || manualMoves.length > 0) && <details id={`proposal-${proposal.id}-manual`}><summary>{t('prop.pd.manualImpact', { n: manualMoves.length })}</summary>{manualMoves.length ? <ul className="proposal-name-list">{manualMoves.map(item => <li key={item.assignmentId}>{assignmentMap.get(item.assignmentId)?.title ?? item.assignmentId}: {item.fromDate ?? t('prop.pd.unscheduled')} → {item.toDate ?? t('prop.pd.unscheduled')}</li>)}</ul> : <p className="muted-text">{t('prop.pd.noManualMoves')}</p>}</details>}
+    {(!compactLocal || proposal.structuralChanges.length > 0) && <details id={`proposal-${proposal.id}-structural`}><summary>{t('prop.pd.structural', { n: proposal.structuralChanges.length })}</summary><div className="proposal-cards">{proposal.structuralChanges.length ? proposal.structuralChanges.map(change => <article className="proposal-card structural-change-card" key={`${change.entityType}-${change.entityId}`}><div className="structural-change-head"><strong>{change.title}</strong><span>{change.changeType === 'added' ? t('prop.pd.ctAdded') : change.changeType === 'removed' ? t('prop.pd.ctRemoved') : t('prop.pd.ctModified')}</span></div>{change.fields.map(field => <div className="before-after structural-field" key={field.label}><span><small>{field.label} · {t('prop.pd.before')}</small>{field.before ?? '—'}</span><span><small>{field.label} · {t('prop.pd.after')}</small>{field.after ?? '—'}</span></div>)}</article>) : <p className="muted-text">{t('prop.pd.noStructural')}</p>}</div></details>}
+    {(!compactLocal || proposal.exceptions.length > 0) && <details id={`proposal-${proposal.id}-exceptions`}><summary>{t('prop.pd.exceptions', { n: proposal.exceptions.length })}</summary>{proposal.exceptions.length ? proposal.exceptions.map((item, index) => <div className="exception-row" key={`${index}-${item.date}-${item.rawKey ?? item.key}`}><strong>{fmtDate(item.date)}</strong><span>{item.label}</span><em>{t('prop.pd.exceptionNote')}{item.affectedAssignmentIds?.length ? ` · ${t('prop.pd.exceptionTasks', { n: item.affectedAssignmentIds.length })}` : ''}</em></div>) : <p className="muted-text">{t('prop.pd.noExceptions')}</p>}</details>}
+    <details id={`proposal-${proposal.id}-calculation`}><summary>{t('prop.pd.calcTitle', { n: proposal.metrics.stabilityScore })}</summary><p>{proposal.description}</p><p>{t('prop.pd.calcBody', { avgBefore: minutesText(proposal.metrics.beforeAverageLoad), avgAfter: minutesText(proposal.metrics.afterAverageLoad), maxBefore: minutesText(proposal.metrics.beforeMaxLoad), maxAfter: minutesText(proposal.metrics.afterMaxLoad), retention: Math.round(proposal.metrics.originalDateRetention * 100) })}</p></details>
   </div>
 }
 
 function ExpandableMetric({ label, value, tone, onClick }: { label: string; value: number | string; tone?: 'danger' | 'warning' | 'success'; onClick: () => void }) {
-  return <button type="button" className={tone ? `metric-${tone}` : ''} onClick={onClick}><strong>{value}</strong><span>{label}</span><small>展开查看</small></button>
+  const t = useT()
+  return <button type="button" className={tone ? `metric-${tone}` : ''} onClick={onClick}><strong>{value}</strong><span>{label}</span><small>{t('prop.pd.expand')}</small></button>
 }

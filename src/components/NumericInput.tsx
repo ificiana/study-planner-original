@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '../lib/i18n'
 
 type NumericInputProps = {
   value: number | null | undefined
@@ -34,11 +35,11 @@ function syntaxPattern(allowNegative: boolean, allowDecimal: boolean) {
   return allowNegative ? /^-?\d*$/ : /^\d*$/
 }
 
-function syntaxMessage(allowNegative: boolean, allowDecimal: boolean) {
-  if (allowDecimal && allowNegative) return '请输入有效数字'
-  if (allowDecimal) return '请输入非负数字'
-  if (allowNegative) return '请输入整数，不能包含小数'
-  return '请输入非负整数，不能包含小数或负号'
+function syntaxMessage(t: (key: string, vars?: Record<string, string | number>) => string, allowNegative: boolean, allowDecimal: boolean) {
+  if (allowDecimal && allowNegative) return t('numericInput.invalidNumber')
+  if (allowDecimal) return t('numericInput.invalidNonNegative')
+  if (allowNegative) return t('numericInput.invalidIntegerNoDecimal')
+  return t('numericInput.invalidNonNegativeInteger')
 }
 
 /**
@@ -68,6 +69,7 @@ export function NumericInput({
   className,
   ...rest
 }: NumericInputProps) {
+  const t = useT()
   const [draft, setDraft] = useState(() => displayValue(value))
   const [feedback, setFeedback] = useState<{ message: string; kind: 'error' | 'notice' }>({ message: '', kind: 'error' })
   const focused = useRef(false)
@@ -83,8 +85,8 @@ export function NumericInput({
   const restoreCurrent = () => setDraft(displayValue(latestValue.current))
 
   const rangeMessage = (parsed: number) => {
-    if (min != null && parsed < min) return `不能小于 ${min}`
-    if (max != null && parsed > max) return `不能大于 ${max}`
+    if (min != null && parsed < min) return t('numericInput.minValue', { min })
+    if (max != null && parsed > max) return t('numericInput.maxValue', { max })
     return ''
   }
 
@@ -118,7 +120,7 @@ export function NumericInput({
         if (event.defaultPrevented || !event.data) return
         if (rejectInsertedText(event.data)) {
           event.preventDefault()
-          setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+          setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
         }
       }}
       onPaste={(event: any) => {
@@ -127,14 +129,14 @@ export function NumericInput({
         const text = event.clipboardData?.getData('text') ?? ''
         if (rejectInsertedText(text)) {
           event.preventDefault()
-          setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+          setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
         }
       }}
       onChange={(event: any) => {
         onChange?.(event)
         const raw = normalizeDigits(event.target.value)
         if (!pattern.test(raw)) {
-          setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+          setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
           return
         }
         setDraft(raw)
@@ -144,7 +146,7 @@ export function NumericInput({
         }
         const parsed = Number(raw)
         if (!Number.isFinite(parsed) || (!allowDecimal && !Number.isInteger(parsed))) {
-          setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+          setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
           return
         }
         const error = rangeMessage(parsed)
@@ -159,12 +161,12 @@ export function NumericInput({
           if (onEmpty) onEmpty()
           else restoreCurrent()
         } else if (!pattern.test(raw)) {
-          setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+          setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
           restoreCurrent()
         } else {
           const parsed = Number(raw)
           if (!Number.isFinite(parsed) || (!allowDecimal && !Number.isInteger(parsed))) {
-            setFeedback({ message: syntaxMessage(allowNegative, allowDecimal), kind: 'error' })
+            setFeedback({ message: syntaxMessage(t, allowNegative, allowDecimal), kind: 'error' })
             restoreCurrent()
           } else {
             const normalized = clamp(parsed, min, max)
@@ -172,7 +174,7 @@ export function NumericInput({
             if (normalized !== latestValue.current) onValueChange(normalized)
             setDraft(String(normalized))
             setFeedback(wasAdjusted
-              ? { message: parsed < normalized ? `最小值为 ${normalized}，已自动调整` : `最大值为 ${normalized}，已自动调整`, kind: 'notice' }
+              ? { message: parsed < normalized ? t('numericInput.adjustedToMin', { value: normalized }) : t('numericInput.adjustedToMax', { value: normalized }), kind: 'notice' }
               : { message: '', kind: 'error' })
           }
         }

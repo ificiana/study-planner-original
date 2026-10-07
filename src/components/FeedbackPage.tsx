@@ -18,43 +18,62 @@ import {
   type FeedbackStatus,
   type FeedbackType,
 } from '../lib/feedback'
+import { useT } from '../lib/i18n'
 import '../feedback.css'
 
-const feedbackOptions: Array<{ type: FeedbackType; title: string; description: string; icon: any }> = [
-  { type: 'bug', title: 'Bug 反馈', description: '功能异常、显示问题、数据不一致或操作失败。', icon: AlertTriangle },
-  { type: 'suggestion', title: '新功能需求', description: '希望增加的能力、新流程或新的使用方式。', icon: Sparkles },
-  { type: 'experience', title: '体验优化', description: '现有功能能用，但操作、文案、布局或流程可以更顺手。', icon: CheckCircle2 },
-  { type: 'other', title: '其他', description: '不属于以上类别的建议、感受或补充说明。', icon: Inbox },
-]
-
-const placeholders: Record<FeedbackType, string> = {
-  bug: '请描述你遇到的问题、当时正在做什么，以及你期望发生什么。',
-  suggestion: '请描述你希望增加的功能，以及它能帮你解决什么问题。',
-  experience: '请描述哪里用起来不够顺手，以及你希望怎样改进。',
-  other: '请写下你想告诉我们的内容。',
+function useFeedbackOptions() {
+  const t = useT()
+  return [
+    { type: 'bug' as FeedbackType, title: t('feedbackPage.typeBug'), description: t('feedbackPage.typeBugDesc'), icon: AlertTriangle },
+    { type: 'suggestion' as FeedbackType, title: t('feedbackPage.typeSuggestion'), description: t('feedbackPage.typeSuggestionDesc'), icon: Sparkles },
+    { type: 'experience' as FeedbackType, title: t('feedbackPage.typeExperience'), description: t('feedbackPage.typeExperienceDesc'), icon: CheckCircle2 },
+    { type: 'other' as FeedbackType, title: t('feedbackPage.typeOther'), description: t('feedbackPage.typeOtherDesc'), icon: Inbox },
+  ]
 }
 
-const typeLabels: Record<FeedbackType, string> = {
-  bug: 'Bug 反馈', suggestion: '新功能需求', experience: '体验优化', other: '其他',
+function usePlaceholders(): Record<FeedbackType, string> {
+  const t = useT()
+  return {
+    bug: t('feedbackPage.placeholderBug'),
+    suggestion: t('feedbackPage.placeholderSuggestion'),
+    experience: t('feedbackPage.placeholderExperience'),
+    other: t('feedbackPage.placeholderOther'),
+  }
 }
 
-const statusLabels: Record<FeedbackStatus, string> = {
-  new: '已收到', reviewing: '处理中', planned: '已计划', resolved: '已解决', closed: '已关闭',
+function useTypeLabels(): Record<FeedbackType, string> {
+  const t = useT()
+  return {
+    bug: t('feedbackPage.typeBug'), suggestion: t('feedbackPage.typeSuggestion'), experience: t('feedbackPage.typeExperience'), other: t('feedbackPage.typeOther'),
+  }
 }
 
-const depthLabels: Record<string, string> = {
-  new: '新用户', casual: '轻度用户', returning: '回访用户', engaged: '活跃用户', power: '深度用户',
+function useStatusLabels(): Record<FeedbackStatus, string> {
+  const t = useT()
+  return {
+    new: t('feedbackPage.statusNew'), reviewing: t('feedbackPage.statusReviewing'), planned: t('feedbackPage.statusPlanned'), resolved: t('feedbackPage.statusResolved'), closed: t('feedbackPage.statusClosed'),
+  }
+}
+
+function useDepthLabels(): Record<string, string> {
+  const t = useT()
+  return {
+    new: t('feedbackPage.depthNew'), casual: t('feedbackPage.depthCasual'), returning: t('feedbackPage.depthReturning'), engaged: t('feedbackPage.depthEngaged'), power: t('feedbackPage.depthPower'),
+  }
 }
 
 function displayTime(value: string) {
   try { return new Date(value).toLocaleString('zh-CN', { hour12: false }) } catch { return value }
 }
 
-function detailValue(value: string | number | boolean | null | undefined, options?: { time?: boolean; suffix?: string }) {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'boolean') return value ? '是' : '否'
-  if (options?.time && typeof value === 'string') return displayTime(value)
-  return `${value}${options?.suffix ?? ''}`
+function useDetailValue() {
+  const t = useT()
+  return (value: string | number | boolean | null | undefined, options?: { time?: boolean; suffix?: string }) => {
+    if (value === null || value === undefined || value === '') return t('feedbackPage.valueEmpty')
+    if (typeof value === 'boolean') return value ? t('feedbackPage.valueYes') : t('feedbackPage.valueNo')
+    if (options?.time && typeof value === 'string') return displayTime(value)
+    return `${value}${options?.suffix ?? ''}`
+  }
 }
 
 function AttachmentGrid({ attachments }: { attachments: FeedbackAttachment[] }) {
@@ -70,81 +89,87 @@ function AttachmentGrid({ attachments }: { attachments: FeedbackAttachment[] }) 
 }
 
 function SelectedReplyFiles({ files, onRemove }: { files: File[]; onRemove: (index: number) => void }) {
+  const t = useT()
   if (!files.length) return null
   return <div className="feedback-selected-files feedback-reply-files">
     {files.map((file, index) => <div key={`${file.name}-${file.size}-${index}`}>
       <span>{file.name}</span>
-      <button type="button" aria-label={`移除 ${file.name}`} onClick={() => onRemove(index)}><X size={15}/></button>
+      <button type="button" aria-label={t('feedbackPage.removeFile', { name: file.name })} onClick={() => onRemove(index)}><X size={15}/></button>
     </div>)}
   </div>
 }
 
 function AdminDetails({ record }: { record: FeedbackRecord }) {
+  const t = useT()
+  const typeLabels = useTypeLabels()
+  const statusLabels = useStatusLabels()
+  const depthLabels = useDepthLabels()
+  const detailValue = useDetailValue()
   const groups: Array<{ title: string; items: Array<[string, string]> }> = [
     {
-      title: '身份与反馈',
+      title: t('feedbackPage.detailIdentityTitle'),
       items: [
-        ['反馈 ID', detailValue(record.id)],
-        ['用户 ID', detailValue(record.user_id)],
-        ['游客 ID', detailValue(record.visitor_id)],
-        ['账号模式', record.account_mode === 'account' ? '登录账号' : record.account_mode === 'guest' ? '游客' : '—'],
-        ['反馈类型', typeLabels[record.feedback_type]],
-        ['处理状态', statusLabels[record.status]],
-        ['提交时间', detailValue(record.created_at, { time: true })],
+        [t('feedbackPage.detailFeedbackId'), detailValue(record.id)],
+        [t('feedbackPage.detailUserId'), detailValue(record.user_id)],
+        [t('feedbackPage.detailVisitorId'), detailValue(record.visitor_id)],
+        [t('feedbackPage.detailAccountMode'), record.account_mode === 'account' ? t('feedbackPage.accountModeAccount') : record.account_mode === 'guest' ? t('feedbackPage.accountModeGuest') : t('feedbackPage.valueEmpty')],
+        [t('feedbackPage.detailFeedbackType'), typeLabels[record.feedback_type]],
+        [t('feedbackPage.detailStatus'), statusLabels[record.status]],
+        [t('feedbackPage.detailSubmittedAt'), detailValue(record.created_at, { time: true })],
       ],
     },
     {
-      title: '来源与设备环境',
+      title: t('feedbackPage.detailSourceTitle'),
       items: [
-        ['应用版本', detailValue(record.app_version)],
-        ['所在页面', detailValue(record.page_path)],
-        ['User Agent', detailValue(record.user_agent)],
-        ['UTM 来源', detailValue(record.utm_source)],
-        ['UTM 活动', detailValue(record.utm_campaign)],
-        ['首次来源页', detailValue(record.first_referrer)],
-        ['浏览器语言', detailValue(record.browser_language)],
-        ['客户端时区', detailValue(record.client_timezone)],
-        ['PWA 模式', detailValue(record.is_pwa)],
+        [t('feedbackPage.detailAppVersion'), detailValue(record.app_version)],
+        [t('feedbackPage.detailPagePath'), detailValue(record.page_path)],
+        [t('feedbackPage.detailUserAgent'), detailValue(record.user_agent)],
+        [t('feedbackPage.detailUtmSource'), detailValue(record.utm_source)],
+        [t('feedbackPage.detailUtmCampaign'), detailValue(record.utm_campaign)],
+        [t('feedbackPage.detailFirstReferrer'), detailValue(record.first_referrer)],
+        [t('feedbackPage.detailBrowserLanguage'), detailValue(record.browser_language)],
+        [t('feedbackPage.detailClientTimezone'), detailValue(record.client_timezone)],
+        [t('feedbackPage.detailIsPwa'), detailValue(record.is_pwa)],
       ],
     },
     {
-      title: '使用时长与活跃度',
+      title: t('feedbackPage.detailUsageTitle'),
       items: [
-        ['首次访问', detailValue(record.first_seen_at, { time: true })],
-        ['最近访问', detailValue(record.last_seen_at, { time: true })],
-        ['使用跨度', detailValue(record.tenure_days, { suffix: ' 天' })],
-        ['累计 Session', detailValue(record.total_sessions)],
-        ['累计事件', detailValue(record.total_events)],
-        ['累计活跃天数', detailValue(record.total_active_days, { suffix: ' 天' })],
-        ['近 30 天 Session', detailValue(record.sessions_30d)],
-        ['近 30 天事件', detailValue(record.events_30d)],
-        ['近 30 天活跃天数', detailValue(record.active_days_30d, { suffix: ' 天' })],
-        ['近 30 天访问页面数', detailValue(record.unique_pages_30d)],
+        [t('feedbackPage.detailFirstSeen'), detailValue(record.first_seen_at, { time: true })],
+        [t('feedbackPage.detailLastSeen'), detailValue(record.last_seen_at, { time: true })],
+        [t('feedbackPage.detailTenureDays'), detailValue(record.tenure_days, { suffix: t('feedbackPage.detailDaysSuffix') })],
+        [t('feedbackPage.detailTotalSessions'), detailValue(record.total_sessions)],
+        [t('feedbackPage.detailTotalEvents'), detailValue(record.total_events)],
+        [t('feedbackPage.detailTotalActiveDays'), detailValue(record.total_active_days, { suffix: t('feedbackPage.detailDaysSuffix') })],
+        [t('feedbackPage.detailSessions30d'), detailValue(record.sessions_30d)],
+        [t('feedbackPage.detailEvents30d'), detailValue(record.events_30d)],
+        [t('feedbackPage.detailActiveDays30d'), detailValue(record.active_days_30d, { suffix: t('feedbackPage.detailDaysSuffix') })],
+        [t('feedbackPage.detailUniquePages30d'), detailValue(record.unique_pages_30d)],
       ],
     },
     {
-      title: '学习规划器使用情况',
+      title: t('feedbackPage.detailPlannerTitle'),
       items: [
-        ['任务数', detailValue(record.assignment_count)],
-        ['已完成任务数', detailValue(record.completed_assignment_count)],
-        ['任务组数', detailValue(record.task_group_count)],
-        ['目标数', detailValue(record.goal_count)],
-        ['录入批次数', detailValue(record.intake_batch_count)],
-        ['重排次数', detailValue(record.replan_count)],
+        [t('feedbackPage.detailAssignmentCount'), detailValue(record.assignment_count)],
+        [t('feedbackPage.detailCompletedAssignmentCount'), detailValue(record.completed_assignment_count)],
+        [t('feedbackPage.detailTaskGroupCount'), detailValue(record.task_group_count)],
+        [t('feedbackPage.detailGoalCount'), detailValue(record.goal_count)],
+        [t('feedbackPage.detailIntakeBatchCount'), detailValue(record.intake_batch_count)],
+        [t('feedbackPage.detailReplanCount'), detailValue(record.replan_count)],
       ],
     },
     {
-      title: '用户深度快照',
+      title: t('feedbackPage.detailSnapshotTitle'),
       items: [
-        ['深度分数', record.depth_score === null || record.depth_score === undefined ? '—' : `${record.depth_score} / 100`],
-        ['深度等级', record.depth_level ? `${depthLabels[record.depth_level] ?? record.depth_level}（${record.depth_level}）` : '—'],
-        ['计算时间', detailValue(record.depth_calculated_at, { time: true })],
+        [t('feedbackPage.detailDepthScore'), record.depth_score === null || record.depth_score === undefined ? t('feedbackPage.valueEmpty') : `${record.depth_score} / 100`],
+        [t('feedbackPage.detailDepthLevel'), record.depth_level ? `${depthLabels[record.depth_level] ?? record.depth_level}（${record.depth_level}）` : t('feedbackPage.valueEmpty')],
+        [t('feedbackPage.detailDepthCalculatedAt'), detailValue(record.depth_calculated_at, { time: true })],
       ],
     },
   ]
 
   return <details className="feedback-admin-details">
-    <summary>查看详细信息</summary>
+    <summary>{t('feedbackPage.viewDetails')}</summary>
     <div className="feedback-detail-groups">
       {groups.map(group => <section className="feedback-detail-group" key={group.title}>
         <h4>{group.title}</h4>
@@ -152,15 +177,18 @@ function AdminDetails({ record }: { record: FeedbackRecord }) {
           {group.items.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
         </dl>
       </section>)}
-      <p className="feedback-detail-security">安全字段 guest_access_hash 不下发到管理端页面。</p>
+      <p className="feedback-detail-security">{t('feedbackPage.securityNote')}</p>
     </div>
   </details>
 }
 
-function replyLabel(reply: FeedbackReply, scope: 'mine' | 'admin') {
-  if (reply.author_type === 'admin') return '开发者'
-  if (scope === 'mine') return '你'
-  return reply.author_type === 'guest' ? '游客' : '用户'
+function useReplyLabel() {
+  const t = useT()
+  return (reply: FeedbackReply, scope: 'mine' | 'admin') => {
+    if (reply.author_type === 'admin') return t('feedbackPage.replyLabelAdmin')
+    if (scope === 'mine') return t('feedbackPage.replyLabelSelf')
+    return reply.author_type === 'guest' ? t('feedbackPage.replyLabelGuest') : t('feedbackPage.replyLabelUser')
+  }
 }
 
 function replyIsNew(reply: FeedbackReply, scope: 'mine' | 'admin') {
@@ -169,6 +197,11 @@ function replyIsNew(reply: FeedbackReply, scope: 'mine' | 'admin') {
 }
 
 function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine' | 'admin'; refreshKey: number; onUnreadCountChange?: (count: number) => void }) {
+  const t = useT()
+  const typeLabels = useTypeLabels()
+  const statusLabels = useStatusLabels()
+  const depthLabels = useDepthLabels()
+  const replyLabel = useReplyLabel()
   const [records, setRecords] = useState<FeedbackRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -191,7 +224,7 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
         await markAdminFollowupsRead(next)
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '反馈记录加载失败。')
+      setError(reason instanceof Error ? reason.message : t('feedbackPage.loadFailed'))
     } finally { setLoading(false) }
   }
 
@@ -216,7 +249,7 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
     const validation = validateFeedbackScreenshots(next)
     if (validation) { setError(validation); return }
     if (scope === 'mine' && !record.user_id && next.length) {
-      setError('游客追加回复目前只支持文字；开发者回复中的图片仍可安全查看。')
+      setError(t('feedbackPage.guestAttachTextOnly'))
       return
     }
     setReplyFiles(next)
@@ -232,12 +265,12 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
       const result = scope === 'admin'
         ? await replyToFeedback(record.id, replyText, replyFiles)
         : await appendFeedbackReply(record, replyText, replyFiles)
-      const failed = result.failedCount > 0 ? `；${result.failedCount} 张图片上传失败` : ''
-      setNotice(`${scope === 'admin' ? '回复已发送' : '追加回复已发送'}${failed}。`)
+      const failed = result.failedCount > 0 ? t('feedbackPage.replyFailedImagesSuffix', { count: result.failedCount }) : ''
+      setNotice(`${scope === 'admin' ? t('feedbackPage.replySentAdmin') : t('feedbackPage.replySentMine')}${failed}。`)
       cancelReply()
       await load()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '回复发送失败。')
+      setError(reason instanceof Error ? reason.message : t('feedbackPage.replySendFailed'))
     } finally { setSaving(false) }
   }
 
@@ -245,12 +278,12 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
     setSaving(true)
     setError('')
     try { await updateFeedbackStatus(feedbackId, status); await load() }
-    catch (reason) { setError(reason instanceof Error ? reason.message : '状态更新失败。') }
+    catch (reason) { setError(reason instanceof Error ? reason.message : t('feedbackPage.statusUpdateFailed')) }
     finally { setSaving(false) }
   }
 
-  if (loading) return <div className="feedback-empty"><RefreshCw size={18}/><span>正在加载反馈…</span></div>
-  if (records.length === 0) return <>{error && <div className="feedback-status error" role="alert">{error}</div>}<div className="feedback-empty"><Inbox size={20}/><span>{scope === 'admin' ? '暂时还没有反馈。' : '当前还没有你提交过的反馈。'}</span></div></>
+  if (loading) return <div className="feedback-empty"><RefreshCw size={18}/><span>{t('feedbackPage.loading')}</span></div>
+  if (records.length === 0) return <>{error && <div className="feedback-status error" role="alert">{error}</div>}<div className="feedback-empty"><Inbox size={20}/><span>{scope === 'admin' ? t('feedbackPage.emptyAdmin') : t('feedbackPage.emptyMine')}</span></div></>
 
   return <>
     {error && <div className="feedback-status error" role="alert">{error}</div>}
@@ -264,25 +297,25 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
             <div className="feedback-history-meta">
               <span className="feedback-type-badge">{typeLabels[record.feedback_type]}</span>
               <span className={`feedback-state-badge state-${record.status}`}>{statusLabels[record.status]}</span>
-              {unreadReplies > 0 && <span className="feedback-new-reply-badge">{scope === 'mine' ? '新回复' : '新追问'} · {unreadReplies}</span>}
-              {scope === 'admin' && <span className="feedback-admin-identity">{record.user_id ? '登录用户' : '游客'}</span>}
-              {scope === 'admin' && record.depth_level && <span className="feedback-admin-depth">{depthLabels[record.depth_level] ?? record.depth_level} · {record.depth_score ?? 0}分</span>}
+              {unreadReplies > 0 && <span className="feedback-new-reply-badge">{scope === 'mine' ? t('feedbackPage.newReplyMine') : t('feedbackPage.newReplyAdmin')} · {unreadReplies}</span>}
+              {scope === 'admin' && <span className="feedback-admin-identity">{record.user_id ? t('feedbackPage.identityLoggedIn') : t('feedbackPage.identityGuest')}</span>}
+              {scope === 'admin' && record.depth_level && <span className="feedback-admin-depth">{depthLabels[record.depth_level] ?? record.depth_level} · {record.depth_score ?? 0}{t('feedbackPage.depthScoreSuffix')}</span>}
             </div>
             <time>{displayTime(record.created_at)}</time>
           </div>
           <p className="feedback-history-content">{record.content}</p>
           <AttachmentGrid attachments={record.attachments}/>
 
-          {scope === 'admin' && <AdminDetails record={record}/>} 
+          {scope === 'admin' && <AdminDetails record={record}/>}
 
           {record.replies.length > 0 && <div className="feedback-replies feedback-conversation">
-            <div className="feedback-conversation-title"><strong><MessageCircle size={15}/>沟通记录</strong><span>{record.replies.length} 条</span></div>
+            <div className="feedback-conversation-title"><strong><MessageCircle size={15}/>{t('feedbackPage.conversationTitle')}</strong><span>{t('feedbackPage.conversationCount', { count: record.replies.length })}</span></div>
             {record.replies.map(reply => {
               const developer = reply.author_type === 'admin'
               return <div className={`feedback-reply ${developer ? 'feedback-reply-developer' : 'feedback-reply-participant'}`} key={reply.id}>
                 <div className="feedback-reply-head">
                   <strong>{replyLabel(reply, scope)}</strong>
-                  <div>{replyIsNew(reply, scope) && <em>{scope === 'mine' ? '新回复' : '新追问'}</em>}<time>{displayTime(reply.created_at)}</time></div>
+                  <div>{replyIsNew(reply, scope) && <em>{scope === 'mine' ? t('feedbackPage.newReplyMine') : t('feedbackPage.newReplyAdmin')}</em>}<time>{displayTime(reply.created_at)}</time></div>
                 </div>
                 <p>{reply.content}</p>
                 <AttachmentGrid attachments={reply.attachments}/>
@@ -291,7 +324,7 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
           </div>}
 
           <div className={scope === 'admin' ? 'feedback-admin-actions' : 'feedback-user-actions'}>
-            {scope === 'admin' && <label>处理状态
+            {scope === 'admin' && <label>{t('feedbackPage.statusLabel')}
               <select value={record.status} disabled={saving} onChange={event => void changeStatus(record.id, event.target.value as FeedbackStatus)}>
                 {Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
               </select>
@@ -300,21 +333,21 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
             {replyingId === record.id
               ? <div className="feedback-reply-editor">
                   <div className="feedback-reply-editor-heading">
-                    <strong>{scope === 'admin' ? '回复用户' : '追加说明'}</strong>
-                    <small>{replyText.length} / 4000</small>
+                    <strong>{scope === 'admin' ? t('feedbackPage.replyToUser') : t('feedbackPage.appendNote')}</strong>
+                    <small>{t('feedbackPage.charCount', { count: replyText.length })}</small>
                   </div>
-                  <textarea value={replyText} maxLength={4000} rows={4} placeholder={scope === 'admin' ? '写给用户的回复…' : '继续补充情况、回答开发者问题，或说明问题是否仍然存在…'} onChange={event => setReplyText(event.target.value)}/>
+                  <textarea value={replyText} maxLength={4000} rows={4} placeholder={scope === 'admin' ? t('feedbackPage.replyPlaceholderAdmin') : t('feedbackPage.replyPlaceholderMine')} onChange={event => setReplyText(event.target.value)}/>
                   {canAttachToReply
                     ? <label className="feedback-reply-upload">
                         <input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={event => chooseReplyFiles(record, event.target.files)}/>
-                        <ImagePlus size={16}/><span>添加图片</span><small>最多 3 张，每张 5MB</small>
+                        <ImagePlus size={16}/><span>{t('feedbackPage.addImage')}</span><small>{t('feedbackPage.attachLimit')}</small>
                       </label>
-                    : <p className="feedback-reply-guest-note">游客追加回复目前只支持文字；开发者仍可在回复中附图，图片会在校验本机反馈身份后通过临时签名地址显示。</p>}
+                    : <p className="feedback-reply-guest-note">{t('feedbackPage.guestAttachNote')}</p>}
                   <SelectedReplyFiles files={replyFiles} onRemove={index => setReplyFiles(current => current.filter((_, currentIndex) => currentIndex !== index))}/>
-                  {(scope === 'mine' && (record.status === 'resolved' || record.status === 'closed')) && <p className="feedback-reopen-note">发送后这条反馈会自动重新打开为“处理中”，方便开发者继续跟进。</p>}
-                  <div><button className="ghost-button" type="button" disabled={saving} onClick={cancelReply}>取消</button><button className="primary-button" type="button" disabled={saving || !replyText.trim()} onClick={() => void sendReply(record)}>{saving ? '发送中…' : scope === 'admin' ? '发送回复' : '发送追加回复'}</button></div>
+                  {(scope === 'mine' && (record.status === 'resolved' || record.status === 'closed')) && <p className="feedback-reopen-note">{t('feedbackPage.reopenNote')}</p>}
+                  <div><button className="ghost-button" type="button" disabled={saving} onClick={cancelReply}>{t('common.cancel')}</button><button className="primary-button" type="button" disabled={saving || !replyText.trim()} onClick={() => void sendReply(record)}>{saving ? t('feedbackPage.sending') : scope === 'admin' ? t('feedbackPage.sendReplyAdmin') : t('feedbackPage.sendReplyMine')}</button></div>
                 </div>
-              : <button className="ghost-button feedback-open-reply" type="button" onClick={() => beginReply(record.id)}><MessageCircle size={15}/>{scope === 'admin' ? '回复用户' : record.replies.length ? '继续回复' : '追加说明'}</button>}
+              : <button className="ghost-button feedback-open-reply" type="button" onClick={() => beginReply(record.id)}><MessageCircle size={15}/>{scope === 'admin' ? t('feedbackPage.replyToUser') : record.replies.length ? t('feedbackPage.continueReply') : t('feedbackPage.appendNote')}</button>}
           </div>
         </article>
       })}
@@ -323,6 +356,9 @@ function FeedbackList({ scope, refreshKey, onUnreadCountChange }: { scope: 'mine
 }
 
 export function FeedbackPage() {
+  const t = useT()
+  const feedbackOptions = useFeedbackOptions()
+  const placeholders = usePlaceholders()
   const [view, setView] = useState<'submit' | 'mine' | 'admin'>('submit')
   const [type, setType] = useState<FeedbackType>('bug')
   const [content, setContent] = useState('')
@@ -362,7 +398,7 @@ export function FeedbackPage() {
     const next = Array.from(files ?? [])
     const error = validateFeedbackScreenshots(next)
     if (error) { setStatus({ kind: 'error', message: error }); return }
-    if (next.length > 0 && !signedIn) { setStatus({ kind: 'error', message: '登录后才能上传截图。登录后再回到这里即可添加。' }); return }
+    if (next.length > 0 && !signedIn) { setStatus({ kind: 'error', message: t('feedbackPage.loginRequiredToUpload') }); return }
     setScreenshots(next)
     setStatus(undefined)
   }
@@ -378,37 +414,37 @@ export function FeedbackPage() {
       setContent('')
       setScreenshots([])
       setRefreshKey(value => value + 1)
-      const extra = result.failedCount > 0 ? `反馈已提交；${result.failedCount} 张截图上传失败，可在“我的反馈”中确认。` : '已收到，感谢你的反馈。之后可以在“我的反馈”里查看回复，并继续和开发者沟通。'
+      const extra = result.failedCount > 0 ? t('feedbackPage.submitFailedGeneric', { count: result.failedCount }) : t('feedbackPage.submitSuccess')
       setStatus({ kind: 'success', message: extra })
     } catch (error) {
-      setStatus({ kind: 'error', message: error instanceof Error ? error.message : '提交失败，请稍后重试。' })
+      setStatus({ kind: 'error', message: error instanceof Error ? error.message : t('feedbackPage.submitFailed') })
     } finally { setSubmitting(false) }
   }
 
   return <div className="feedback-page">
     <section className="feedback-hero">
       <div>
-        <span className="feedback-eyebrow">帮助我们改进</span>
-        <h2>意见反馈</h2>
-        <p>提交反馈和问题截图，在“我的反馈”中查看处理状态、接收开发者回复，并继续追加说明。</p>
+        <span className="feedback-eyebrow">{t('feedbackPage.heroEyebrow')}</span>
+        <h2>{t('feedbackPage.heroTitle')}</h2>
+        <p>{t('feedbackPage.heroText')}</p>
       </div>
     </section>
 
     {unreadCount > 0 && <div className="feedback-unread-banner" role="status">
       <Bell size={19}/>
-      <div><strong>你的反馈有新回复</strong><span>有 {unreadCount} 条开发者回复还没查看，进入“我的反馈”即可看到完整沟通记录。</span></div>
-      <button className="primary-button" type="button" onClick={() => setView('mine')}>查看回复</button>
+      <div><strong>{t('feedbackPage.unreadTitle')}</strong><span>{t('feedbackPage.unreadText', { count: unreadCount })}</span></div>
+      <button className="primary-button" type="button" onClick={() => setView('mine')}>{t('feedbackPage.viewReplies')}</button>
     </div>}
 
-    <div className="feedback-tabs" role="tablist" aria-label="意见反馈">
-      <button type="button" className={view === 'submit' ? 'active' : ''} onClick={() => setView('submit')}>提交反馈</button>
-      <button type="button" className={view === 'mine' ? 'active' : ''} onClick={() => setView('mine')}>我的反馈{unreadCount > 0 && <em>{unreadCount > 99 ? '99+' : unreadCount}</em>}</button>
-      {isAdmin && <button type="button" className={view === 'admin' ? 'active' : ''} onClick={() => setView('admin')}>反馈管理</button>}
+    <div className="feedback-tabs" role="tablist" aria-label={t('feedbackPage.tabsAriaLabel')}>
+      <button type="button" className={view === 'submit' ? 'active' : ''} onClick={() => setView('submit')}>{t('feedbackPage.tabSubmit')}</button>
+      <button type="button" className={view === 'mine' ? 'active' : ''} onClick={() => setView('mine')}>{t('feedbackPage.tabMine')}{unreadCount > 0 && <em>{unreadCount > 99 ? '99+' : unreadCount}</em>}</button>
+      {isAdmin && <button type="button" className={view === 'admin' ? 'active' : ''} onClick={() => setView('admin')}>{t('feedbackPage.tabAdmin')}</button>}
     </div>
 
     {view === 'submit' && <form className="feedback-form" onSubmit={submit}>
       <fieldset className="feedback-type-fieldset">
-        <legend>反馈类型</legend>
+        <legend>{t('feedbackPage.typeFieldsetLegend')}</legend>
         <div className="feedback-type-grid">
           {feedbackOptions.map(option => {
             const Icon = option.icon
@@ -424,36 +460,36 @@ export function FeedbackPage() {
       </fieldset>
 
       <label className="feedback-content-field">
-        <span className="feedback-field-heading"><strong>反馈内容</strong><small>{content.length} / 4000</small></span>
+        <span className="feedback-field-heading"><strong>{t('feedbackPage.contentLabel')}</strong><small>{t('feedbackPage.charCount', { count: content.length })}</small></span>
         <textarea value={content} onChange={event => { setContent(event.target.value); if (status) setStatus(undefined) }} placeholder={placeholders[type]} maxLength={4000} rows={9} required/>
       </label>
 
       <div className="feedback-screenshot-field">
-        <div className="feedback-field-heading"><strong>问题截图 <span>（可选）</span></strong><small>最多 3 张，每张 5MB</small></div>
+        <div className="feedback-field-heading"><strong>{t('feedbackPage.screenshotLabel')} <span>{t('feedbackPage.optional')}</span></strong><small>{t('feedbackPage.attachLimit')}</small></div>
         <label className={`feedback-upload ${!signedIn && sessionReady ? 'disabled' : ''}`}>
           <input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={!signedIn && sessionReady} onChange={event => chooseScreenshots(event.target.files)}/>
-          <Upload size={18}/><span>{signedIn ? '选择 PNG / JPG / WebP 截图' : '登录后可上传截图'}</span>
+          <Upload size={18}/><span>{signedIn ? t('feedbackPage.chooseScreenshot') : t('feedbackPage.loginToUpload')}</span>
         </label>
         {screenshots.length > 0 && <div className="feedback-selected-files">
-          {screenshots.map((file, index) => <div key={`${file.name}-${file.size}-${index}`}><span>{file.name}</span><button type="button" aria-label={`移除 ${file.name}`} onClick={() => setScreenshots(current => current.filter((_, currentIndex) => currentIndex !== index))}><X size={15}/></button></div>)}
+          {screenshots.map((file, index) => <div key={`${file.name}-${file.size}-${index}`}><span>{file.name}</span><button type="button" aria-label={t('feedbackPage.removeFile', { name: file.name })} onClick={() => setScreenshots(current => current.filter((_, currentIndex) => currentIndex !== index))}><X size={15}/></button></div>)}
         </div>}
       </div>
 
       {status && <div className={`feedback-status ${status.kind}`} role={status.kind === 'error' ? 'alert' : 'status'}>{status.kind === 'success' && <CheckCircle2 size={18}/>}<span>{status.message}</span></div>}
 
       <div className="feedback-submit-row">
-        <p>反馈仅用于改进产品；请不要填写密码、验证码等敏感信息。截图存放在私有空间。</p>
-        <button className="primary-button" type="submit" disabled={submitting || !content.trim()}><CheckCircle2 size={16}/>{submitting ? '正在提交…' : '提交反馈'}</button>
+        <p>{t('feedbackPage.privacyNote')}</p>
+        <button className="primary-button" type="submit" disabled={submitting || !content.trim()}><CheckCircle2 size={16}/>{submitting ? t('feedbackPage.submitting') : t('feedbackPage.submit')}</button>
       </div>
     </form>}
 
     {view === 'mine' && <section className="feedback-panel">
-      <div className="feedback-panel-head"><div><h3>我的反馈</h3><p>{signedIn ? '显示你的账号反馈，以及这台浏览器在登录前提交的游客反馈；每条反馈都可以继续追加说明。' : '未登录也可以查看这台浏览器提交过的反馈、开发者回复并继续追加文字；清除浏览器数据或换设备后无法恢复本机游客记录。'}</p></div>{sessionReady && <button className="ghost-button" type="button" onClick={() => setRefreshKey(value => value + 1)}><RefreshCw size={15}/>刷新</button>}</div>
-      {!sessionReady ? <div className="feedback-empty"><RefreshCw size={18}/><span>正在准备反馈记录…</span></div> : <FeedbackList scope="mine" refreshKey={refreshKey} onUnreadCountChange={setUnreadCount}/>} 
+      <div className="feedback-panel-head"><div><h3>{t('feedbackPage.myFeedbackTitle')}</h3><p>{signedIn ? t('feedbackPage.myFeedbackTextSignedIn') : t('feedbackPage.myFeedbackTextGuest')}</p></div>{sessionReady && <button className="ghost-button" type="button" onClick={() => setRefreshKey(value => value + 1)}><RefreshCw size={15}/>{t('feedbackPage.refresh')}</button>}</div>
+      {!sessionReady ? <div className="feedback-empty"><RefreshCw size={18}/><span>{t('feedbackPage.preparingRecords')}</span></div> : <FeedbackList scope="mine" refreshKey={refreshKey} onUnreadCountChange={setUnreadCount}/>}
     </section>}
 
     {view === 'admin' && isAdmin && <section className="feedback-panel feedback-admin-panel">
-      <div className="feedback-panel-head"><div><h3>反馈管理</h3><p>查看全部反馈、完整用户快照和沟通记录；开发者可向登录用户或游客发送图片回复，用户追加追问后也会保留在同一会话里。</p></div><button className="ghost-button" type="button" onClick={() => setRefreshKey(value => value + 1)}><RefreshCw size={15}/>刷新</button></div>
+      <div className="feedback-panel-head"><div><h3>{t('feedbackPage.adminTitle')}</h3><p>{t('feedbackPage.adminText')}</p></div><button className="ghost-button" type="button" onClick={() => setRefreshKey(value => value + 1)}><RefreshCw size={15}/>{t('feedbackPage.refresh')}</button></div>
       <FeedbackList scope="admin" refreshKey={refreshKey}/>
     </section>}
   </div>

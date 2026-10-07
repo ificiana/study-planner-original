@@ -2,6 +2,7 @@ import { Children, cloneElement, isValidElement, useEffect, useRef, type ReactEl
 import { X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { lockPageScroll } from '../lib/scroll-lock'
+import { useT } from '../lib/i18n'
 
 type ChildElement = ReactElement<{ children?: ReactNode; className?: string }>
 
@@ -33,6 +34,7 @@ function splitTrailingModalActions(node: ReactNode): { content: ReactNode; actio
 }
 
 export function Modal({ open, title, children, footer, onClose, wide = false, mobileSheet = false, mobileFullscreen = false, className = '' }: { open: boolean; title: string; children: ReactNode; footer?: ReactNode; onClose: () => void; wide?: boolean; mobileSheet?: boolean; mobileFullscreen?: boolean; className?: string }) {
+  const t = useT()
   const titleIdRef = useRef<string>()
   const dialogRef = useRef<HTMLElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -123,7 +125,7 @@ export function Modal({ open, title, children, footer, onClose, wide = false, mo
   return createPortal(
     <div className="modal-backdrop">
       <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId} className={`modal-card ${wide ? 'modal-wide' : ''} ${mobileSheet ? 'modal-mobile-sheet' : ''} ${mobileFullscreen ? 'modal-mobile-fullscreen' : ''} ${effectiveFooter ? 'modal-with-footer' : ''} ${className}`.trim()} onMouseDown={e => e.stopPropagation()}>
-        <header className="modal-header"><h2 id={titleId}>{title}</h2><button className="icon-button" onClick={onClose} aria-label="关闭"><X size={20} /></button></header>
+        <header className="modal-header"><h2 id={titleId}>{title}</h2><button className="icon-button" onClick={onClose} aria-label={t('modal.closeLabel')}><X size={20} /></button></header>
         <div className="tutorial-modal-coachmark-slot" aria-live="polite"/>
         <div ref={bodyRef} className="modal-body">{extracted.content}</div>
         {effectiveFooter && <footer className="modal-footer">{effectiveFooter}</footer>}

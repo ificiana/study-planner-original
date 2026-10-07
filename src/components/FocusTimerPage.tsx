@@ -5,6 +5,7 @@ import { minutesText, timestampForDate, todayISO } from '../lib/date'
 import { uid } from '../lib/id'
 import { appendStatusEvent } from '../lib/execution'
 import { getTimerElapsedSeconds } from '../lib/timer'
+import { useT } from '../lib/i18n'
 import { Modal } from './Modal'
 import { NumericInput } from './NumericInput'
 
@@ -17,6 +18,7 @@ function formatElapsed(totalSeconds: number) {
 }
 
 export function FocusTimerPage({ onExit }: { onExit: () => void }) {
+  const t = useT()
   const {
     state, commit, startTimer, pauseTimer, stopTimer, addTime, finishAssignment
   } = useApp()
@@ -109,19 +111,19 @@ export function FocusTimerPage({ onExit }: { onExit: () => void }) {
     onExit()
   }
 
-  const stateLabel = timer.running ? '专注中' : '已暂停'
+  const stateLabel = timer.running ? t('focusTimerPage.running') : t('focusTimerPage.paused')
   const remainingLabel = overtimeSeconds > 0
-    ? `已超过预计 ${minutesText(Math.ceil(overtimeSeconds / 60))}`
-    : `距预计时间还有 ${minutesText(Math.ceil((expectedSeconds - elapsedSeconds) / 60))}`
+    ? t('focusTimerPage.overtimeBy', { minutes: minutesText(Math.ceil(overtimeSeconds / 60)) })
+    : t('focusTimerPage.remainingUntil', { minutes: minutesText(Math.ceil((expectedSeconds - elapsedSeconds) / 60)) })
 
   if (!assignment || !group) {
     return (
       <main className="focus-timer-page focus-timer-empty">
         <div className="focus-empty-card">
           <Clock3 size={42}/>
-          <h1>当前没有正在计时的任务</h1>
-          <p>返回今日任务后，点击“开始计时”即可进入沉浸计时页。</p>
-          <button className="primary-button" onClick={onExit}>返回今日任务</button>
+          <h1>{t('focusTimerPage.noActiveTask')}</h1>
+          <p>{t('focusTimerPage.noActiveTaskHint')}</p>
+          <button className="primary-button" onClick={onExit}>{t('focusTimerPage.backToToday')}</button>
         </div>
       </main>
     )
@@ -129,13 +131,13 @@ export function FocusTimerPage({ onExit }: { onExit: () => void }) {
 
   return (
     <main className={`focus-timer-page ${timer.running ? 'is-running' : 'is-paused'}`}>
-      <button className="focus-exit-button" onClick={onExit} aria-label="退出专注页面"><X size={22}/><span>退出专注</span></button>
+      <button className="focus-exit-button" onClick={onExit} aria-label={t('focusTimerPage.exitAriaLabel')}><X size={22}/><span>{t('focusTimerPage.exit')}</span></button>
 
       <section className="focus-timer-stage">
         <div className="focus-task-heading">
           <span className={`subject-pill subject-${group.subject}`}>{group.subject}</span>
           <h1>{assignment.title}</h1>
-          <p>{stateLabel} · 预计 {minutesText(assignment.estimatedMinutes)}</p>
+          <p>{stateLabel} · {t('focusTimerPage.expectedPrefix', { minutes: minutesText(assignment.estimatedMinutes) })}</p>
         </div>
 
         <div className="focus-clock-wrap" style={{ '--timer-progress': `${progressDegrees}deg` } as any}>
@@ -151,28 +153,28 @@ export function FocusTimerPage({ onExit }: { onExit: () => void }) {
             className={`focus-control-button ${timer.running ? 'pause' : 'play'}`}
             onClick={() => timer.running ? pauseTimer() : startTimer(assignment.id)}
           >
-            {timer.running ? <Pause size={28}/> : <Play size={28}/>}<span>{timer.running ? '暂停' : '继续'}</span>
+            {timer.running ? <Pause size={28}/> : <Play size={28}/>}<span>{timer.running ? t('focusTimerPage.pause') : t('focusTimerPage.resume')}</span>
           </button>
-          <button className="focus-finish-button" onClick={openFinish}><Check size={22}/><span>结束计时</span></button>
+          <button className="focus-finish-button" onClick={openFinish}><Check size={22}/><span>{t('focusTimerPage.finishTimer')}</span></button>
         </div>
 
-        <div className="focus-shortcuts"><span>空格：暂停/继续</span><span>Enter：结束计时</span><span>Esc：退出专注</span></div>
+        <div className="focus-shortcuts"><span>{t('focusTimerPage.shortcutSpace')}</span><span>{t('focusTimerPage.shortcutEnter')}</span><span>{t('focusTimerPage.shortcutEsc')}</span></div>
       </section>
 
-      <Modal open={finishOpen} title="结束本次计时" onClose={closeFinish}>
+      <Modal open={finishOpen} title={t('focusTimerPage.finishModalTitle')} onClose={closeFinish}>
         <div className="focus-finish-summary">
           <Clock3 size={22}/>
-          <div><strong>{assignment.title}</strong><span>本次计时 {elapsedText}</span></div>
+          <div><strong>{assignment.title}</strong><span>{t('focusTimerPage.thisSessionDuration', { elapsed: elapsedText })}</span></div>
         </div>
         <div className="form-stack">
-          <label className="field"><span>记入实际用时（分钟）</span><NumericInput min={1} max={1440} step={1} value={sessionMinutes === '' ? undefined : Number(sessionMinutes)} onValueChange={value => setSessionMinutes(String(value))} onEmpty={() => setSessionMinutes('')} autoFocus/></label>
-          <label className="field"><span>保存为部分完成时的当前进度</span><NumericInput min={1} max={99} value={progress} onValueChange={setProgress}/></label>
+          <label className="field"><span>{t('focusTimerPage.recordActualMinutes')}</span><NumericInput min={1} max={1440} step={1} value={sessionMinutes === '' ? undefined : Number(sessionMinutes)} onValueChange={value => setSessionMinutes(String(value))} onEmpty={() => setSessionMinutes('')} autoFocus/></label>
+          <label className="field"><span>{t('focusTimerPage.saveAsPartialProgress')}</span><NumericInput min={1} max={99} value={progress} onValueChange={setProgress}/></label>
         </div>
-        <p className="focus-finish-tip">仅记入时间不会改变任务完成状态；选择部分完成或标记完成后，计时结果会同时写入任务记录。</p>
+        <p className="focus-finish-tip">{t('focusTimerPage.finishTip')}</p>
         <div className="modal-actions focus-finish-actions">
-          <button className="secondary-button" onClick={() => commitSession('time')}>仅记入时间</button>
-          <button className="secondary-button" onClick={() => commitSession('partial')}>保存为部分完成</button>
-          <button className="primary-button" onClick={() => commitSession('done')}>标记完成</button>
+          <button className="secondary-button" onClick={() => commitSession('time')}>{t('focusTimerPage.recordTimeOnly')}</button>
+          <button className="secondary-button" onClick={() => commitSession('partial')}>{t('focusTimerPage.saveAsPartial')}</button>
+          <button className="primary-button" onClick={() => commitSession('done')}>{t('focusTimerPage.markDone')}</button>
         </div>
       </Modal>
     </main>
