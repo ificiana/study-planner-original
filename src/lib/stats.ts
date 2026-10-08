@@ -1,7 +1,7 @@
 import type { Assignment, DailyPlanBaseline, TaskGroup, TimeEntry } from '../types'
 import { nowDate } from './date'
 import { assignmentStateAtDate, isInferredTimeEntry, timeEntryDate } from './execution'
-import { translate, type Language } from './i18n'
+import { getActiveLanguage, translate, type Language } from './i18n'
 
 type EntrySource = NonNullable<TimeEntry['source']> | 'legacy'
 
@@ -87,7 +87,7 @@ export function aggregateDaily(
   start: string,
   end: string,
   baselines: DailyPlanBaseline[] = [],
-  language: Language = 'zh'
+  language: Language = getActiveLanguage()
 ): DailyRow[] {
   const rows = new Map<string, DailyRow>()
   for (const date of dateRangeLocal(start, end)) {

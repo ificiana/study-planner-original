@@ -67,3 +67,14 @@ describe('i18n dictionaries', () => {
     expect(fmtDate('2026-10-08')).toBe('10月8日')
   })
 })
+
+describe('aggregateDaily labels', () => {
+  it('uses the active language by default', async () => {
+    const { aggregateDaily } = await import('../src/lib/stats')
+    const { setActiveLanguage } = await import('../src/lib/i18n')
+    setActiveLanguage('en')
+    const [row] = aggregateDaily([], new Map(), false, '2026-10-07', '2026-10-07')
+    expect(row.label).not.toMatch(/[一-鿿]/)
+    setActiveLanguage('zh')
+  })
+})
