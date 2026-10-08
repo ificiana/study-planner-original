@@ -1,0 +1,6 @@
+/* Hand-written dark-theme fixes appended after the generated rules. */
+html[data-theme="dark"]{background:var(--bg)}
+[data-theme="dark"] .primary-button{background:#2f6bf0;color:#fff}
+[data-theme="dark"] .sidebar{background:rgba(11,18,32,.96)}
+[data-theme="dark"] .topbar{background:rgba(11,18,32,.92)}
+[data-theme="dark"] :is(input,select,textarea){background:#0e1627;color:var(--text);border-color:var(--line)}

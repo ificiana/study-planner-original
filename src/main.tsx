@@ -16,6 +16,7 @@ import { announcePwaUpdate, configurePwaUpdater } from './lib/pwa-update'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 import './analytics.css'
 import './feedback-admin.css'
+import './dark.css'
 
 function LocalizedApp() {
   const { state } = useApp()
