@@ -1,0 +1,12 @@
+/* English text for CSS-generated labels; the base rules carry the Chinese. */
+html[lang="en"] .tutorial-calendar-changed::after{content:"Just adjusted"}
+html[lang="en"] .day-diff-row>div:first-child:before{content:"Before"}
+html[lang="en"] .day-diff-row>div:nth-child(2):before{content:"After"}
+html[lang="en"] .calendar-cell.day-buffer:before{content:"Buffer"}
+html[lang="en"] .proposal-details>details>summary:after{content:"Expand"}
+html[lang="en"] .proposal-details>details[open]>summary:after{content:"Collapse"}
+html[lang="en"] .conflict-resolution-grid button.selected:after{content:"Selected"}
+html[lang="en"] .settings-advanced>summary:after{content:"Expand"}
+html[lang="en"] .settings-advanced[open]>summary:after{content:"Collapse"}
+html[lang="en"] .stats-overview-more>summary:after{content:"Expand"}
+html[lang="en"] .stats-overview-more[open]>summary:after{content:"Collapse"}
