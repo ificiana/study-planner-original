@@ -78,3 +78,13 @@ describe('aggregateDaily labels', () => {
     setActiveLanguage('zh')
   })
 })
+
+describe('applyDocumentLanguage', () => {
+  it.each([['zh', 'zh-CN', '学习计划'], ['en', 'en', 'Study plan']] as const)('sets lang and title for %s', async (language, lang, title) => {
+    const { applyDocumentLanguage } = await import('../src/lib/i18n')
+    const doc = { documentElement: { lang: '' }, title: '' } as unknown as Document
+    applyDocumentLanguage(language, doc)
+    expect(doc.documentElement.lang).toBe(lang)
+    expect(doc.title).toBe(title)
+  })
+})

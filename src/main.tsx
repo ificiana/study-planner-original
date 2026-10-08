@@ -1,9 +1,9 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { AppProvider, useApp } from './AppContext'
-import { I18nProvider } from './lib/i18n'
+import { I18nProvider, applyDocumentLanguage } from './lib/i18n'
 import { AnalyticsObserver } from './components/AnalyticsObserver'
 import { AnalyticsExtensions } from './components/AnalyticsExtensions'
 import { DataResetCompatibilityGuard } from './components/DataResetCompatibilityGuard'
@@ -19,6 +19,7 @@ import './feedback-admin.css'
 
 function LocalizedApp() {
   const { state } = useApp()
+  useEffect(() => { applyDocumentLanguage(state.settings.language) }, [state.settings.language])
   return (
     <I18nProvider language={state.settings.language}>
       <TutorialRuntimeGuard />

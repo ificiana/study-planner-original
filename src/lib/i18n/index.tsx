@@ -114,3 +114,9 @@ export function useI18n() {
 export function useT() {
   return useI18n().t
 }
+
+/** Keep <html lang> and the tab title in step with the UI language so browsers do not offer to translate. */
+export function applyDocumentLanguage(language: Language, doc: Document = document) {
+  doc.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en'
+  doc.title = translate(language, 'plan.defaultName')
+}
