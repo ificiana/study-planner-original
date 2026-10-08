@@ -247,7 +247,7 @@ export function IntakePage({ onPrepared, onNavigate, onAddTask, addRequest, onAd
     <section className="intake-intro">
       <div>
         <span className="intake-kicker"><Inbox size={16}/>{t('nav.intake')}</span>
-        <h2>{state.assignments.length ? t('intakePage.headingHasAssignments') : t('intakePage.headingNoAssignments')}</h2>
+        <h2>{state.assignments.length ? t('intakePage.headingHasAssignments', { count: state.assignments.length }) : t('intakePage.headingNoAssignments')}</h2>
         <p>{t('intakePage.introBody')}</p>
       </div>
       <button className={`primary-button ${tutorialMode ? 'tutorial-disabled-control' : ''}`} aria-disabled={tutorialMode || undefined} onClick={() => tutorialMode ? onTutorialBlocked?.(t('intakePage.tutorialUsePresetBatch')) : createBatch()}><FolderPlus size={17}/>{t('intakePage.newBatch')}</button>
